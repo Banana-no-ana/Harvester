@@ -4,15 +4,28 @@ import sys
 import HarvesterLog
 from gevent import monkey
 monkey.patch_all()
-from gevent.socket import create_connection
+from gevent import socket
+import pickle
 
 class HarvesterClient:
 	def log(self, message):
 		self.logger.log(message)
 		
+	def receiveWelcomeMessage(self, mysocket):
+		socketFileHandle = mysocket.makefile()
+		print socketFileHandle.readline()
+		
+	#Server is sending a client a list of clients this client should connect to
+	def updateClientsList(self, mysocket):
+		fileSocket = mysocket.makefile()
+		for line in fileSocket:
+			print line
+		
 	def connectToServer(self, ip):
 		self.log("Connecting to server on " + str(ip))
-		mysocket = create_connection((ip, 21002), 20)
+		mysocket = socket.create_connection((ip, 21002), 20)
+		self.receiveWelcomeMessage(mysocket)
+		self.updateClientsList(mysocket)
 
 		
 	def validateIP(self, ip):

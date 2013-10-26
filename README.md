@@ -17,6 +17,7 @@ Setup environment:
 
 Needed packages:
 	1. IPy (Used for checking ip addresses)
+	2. Termcolor (used by servers to color messages to clients)
 
 Additional things:
 	1. Make sure there's a "log" folder

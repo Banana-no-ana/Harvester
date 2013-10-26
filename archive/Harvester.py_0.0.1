@@ -27,7 +27,7 @@ def welcomeClient(socket, address):
 	hello_message = "Just receieved a connection from you at" + str(address)
 	socketfile = socket.makefile()
 	socketfile.write(hello_message)
-	socketfile.flush()
+	socketfile.flush(
 	logwrite("sent message to: " + hello_message)
 	
 #Incoming server requests are handlded here

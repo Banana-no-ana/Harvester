@@ -6,16 +6,42 @@ from gevent import monkey
 monkey.patch_all()
 from gevent.server import StreamServer
 import HarvesterLog
+from termcolor import colored
+import pickle
 
 class HarvesterServer:
 	def updateClients(self, address):
-		pass
+		if address not in self.clientlist:
+			self.clientlist.append(address)
+		self.log("Adding client" + str(address) + "to clientList")
 
 	def log(self, message):
 		return self.logger.log(message)		
+	
+	def welcomeClient(self, mysocket, address):
+		hello_message = "SERVER: Just received a connection from you at " + str(address) + ", sending client list soon"
+		socketfile = mysocket.makefile()
+		socketfile.write(colored(hello_message, "red"))
+		socketfile.flush()
+		self.log("Sent client " + str(address) + "Welcome message")
 		
-	def incomeHandle(self, socket, address):
+	
+	def sendClientsList(self, mysocket, address):
+		socketFile = mysocket.makefile()
+		for client in self.clientlist:
+			pickled = pickle.dump(client)
+			socketFile.write(pickled)
+		socketFile.flush()
+		if self.clientlist:
+			self.log("Sent client list of clients" + str(self.clientList))
+		else:
+			self.log("Empty client list not sent to clients")
+		
+		
+	def incomeHandle(self, mysocket, address):
 		print self.log("incoming request from: " + str(address))
+		self.welcomeClient(mysocket, address)
+		self.sendClientsList(mysocket, address)
 		self.updateClients(address)
 		
 	def listenForClients(self):
