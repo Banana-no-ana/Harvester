@@ -19,29 +19,29 @@ class HarvesterServer:
 		return self.logger.log(message)		
 	
 	def welcomeClient(self, mysocket, address):
-		hello_message = "SERVER: Just received a connection from you at " + str(address) + ", sending client list soon"
+		hello_message = "SERVER: Just received a connection from you at " + str(address) + ", sending client list soon \n"
 		socketfile = mysocket.makefile()
-		socketfile.write(colored(hello_message, "red"))
+		socketfile.write(hello_message)
 		socketfile.flush()
 		self.log("Sent client " + str(address) + "Welcome message")
-		
+		gevent.sleep(1)
 	
 	def sendClientsList(self, mysocket, address):
 		socketFile = mysocket.makefile()
-		for client in self.clientlist:
-			pickled = pickle.dump(client)
-			socketFile.write(pickled)
-		socketFile.flush()
 		if self.clientlist:
-			self.log("Sent client list of clients" + str(self.clientList))
+			self.log("Sent client list of clients" + str(self.clientlist))
 		else:
 			self.log("Empty client list not sent to clients")
+		pickled = pickle.dumps(self.clientlist)
+		socketFile.write(pickled)
+		socketFile.flush()
 		
 		
 	def incomeHandle(self, mysocket, address):
 		print self.log("incoming request from: " + str(address))
 		self.welcomeClient(mysocket, address)
 		self.sendClientsList(mysocket, address)
+		print self.clientlist
 		self.updateClients(address)
 		
 	def listenForClients(self):

@@ -5,7 +5,9 @@ import HarvesterLog
 from gevent import monkey
 monkey.patch_all()
 from gevent import socket
+import gevent
 import pickle
+from termcolor import colored
 
 class HarvesterClient:
 	def log(self, message):
@@ -13,20 +15,24 @@ class HarvesterClient:
 		
 	def receiveWelcomeMessage(self, mysocket):
 		socketFileHandle = mysocket.makefile()
-		print socketFileHandle.readline()
+		readaline = socketFileHandle.readline()
+		print colored(readaline, "red")
 		
 	#Server is sending a client a list of clients this client should connect to
 	def updateClientsList(self, mysocket):
-		fileSocket = mysocket.makefile()
-		for line in fileSocket:
-			print line
+		socketFileHandle = mysocket.makefile()
+		readaline = socketFileHandle.read()
+		server_clients = pickle.loads(readaline)	
+		self.peerlist.append(server_clients)
+		print self.peerlist
+
 		
+	#The socket should be the command socket
 	def connectToServer(self, ip):
 		self.log("Connecting to server on " + str(ip))
 		mysocket = socket.create_connection((ip, 21002), 20)
 		self.receiveWelcomeMessage(mysocket)
 		self.updateClientsList(mysocket)
-
 		
 	def validateIP(self, ip):
 		from IPy import IP
@@ -47,4 +53,8 @@ class HarvesterClient:
 		print "In client mode, attempting to connect to ", ip
 		self.validateIP(ip)
 		self.server_ip = ip
+		#create its own chat socket
 		self.connectToServer(self.server_ip)
+		
+		
+		
