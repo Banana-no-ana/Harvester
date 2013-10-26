@@ -12,6 +12,7 @@ class HarvesterLog:
 		curTime = self.now()
 		myMessage = curTime + " : " + message
 		print(myMessage, file=self.file)
+		return myMessage
 		
 	def close(self):
 		self.file.close()
