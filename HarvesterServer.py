@@ -36,7 +36,6 @@ class HarvesterServer:
 		socketFile.write(pickled)
 		socketFile.flush()
 		
-		
 	def incomeHandle(self, mysocket, address):
 		print self.log("incoming request from: " + str(address))
 		self.welcomeClient(mysocket, address)
@@ -45,7 +44,7 @@ class HarvesterServer:
 		self.updateClients(address)
 		
 	def listenForClients(self):
-		self.log("Starting server with port:" + str(self.port))
+		self.log("Starting server on with port:" + str(self.port))
 		server = StreamServer(('', self.port), self.incomeHandle)
 		server.serve_forever()
 

@@ -5,8 +5,9 @@ from easytime import easytime
 class HarvesterLog:
 	def now(self):
 		mytime = easytime.utcnow().convert('Canada/Pacific')
-		time = str(mytime).split(".")[0]
-		return time
+		dateTime = str(mytime).split(".")[0]
+		date, Time = dateTime.split(" ")
+		return date+Time
 		
 	def log(self, message):
 		curTime = self.now()
