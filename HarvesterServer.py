@@ -45,8 +45,8 @@ class HarvesterServer:
 		self.updateClients(address)
 		
 	def listenForClients(self):
-		self.log("Starting server on 127.0.0.1, with port:" + str(self.port))
-		server = StreamServer(('127.0.0.1', self.port), self.incomeHandle)
+		self.log("Starting server with port:" + str(self.port))
+		server = StreamServer(('', self.port), self.incomeHandle)
 		server.serve_forever()
 
 	def __init__(self):

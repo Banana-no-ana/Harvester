@@ -7,6 +7,7 @@ This app aims to make gathering tweets easier by utilizing more developer API ke
 The credentials will never leave the client computer. 
 
 Setup environment:
+	0. sudo apt-get install python-dev
 	1. sudo pip install gevent
 	2. Download libevent
 	3. unpack libevent with tar zxvf libevent

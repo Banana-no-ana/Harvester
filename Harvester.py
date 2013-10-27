@@ -2,6 +2,7 @@
 import sys
 import HarvesterServer
 import HarvesterClient
+import socket
 
 mode = ""
 
@@ -27,11 +28,13 @@ def main():
 		serverMode()
 		
 	elif mode == "client":
-		if len(sys.argv) < 3:
-			print "Need ip address as well"
-		ip = sys.argv[2]
-		clientMode(ip)
-		
+		if len(sys.argv) == 3:
+			print "Connecting to your own server"
+			ip = sys.argv[2]
+		if len(sys.argv) == 2:
+			print "Defaulting to using developer's cluster"
+			ip = socket.gethostbyname('play4trickster.cloudapp.net')
+		clientMode(ip)	
 
 
 if __name__ == '__main__':
