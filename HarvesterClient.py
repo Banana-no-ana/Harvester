@@ -20,12 +20,12 @@ class HarvesterClient:
 		
 	#Server is sending a client a list of clients this client should connect to
 	def updateClientsList(self, mysocket):
+		socket.wait_read(mysocket.fileno())
 		socketFileHandle = mysocket.makefile()
 		readaline = socketFileHandle.read()
 		server_clients = pickle.loads(readaline)	
 		self.peerlist.append(server_clients)
-		print self.peerlist
-
+	
 		
 	#The socket should be the command socket
 	def connectToServer(self, ip):
@@ -33,6 +33,7 @@ class HarvesterClient:
 		mysocket = socket.create_connection((ip, 21002), 20)
 		self.receiveWelcomeMessage(mysocket)
 		self.updateClientsList(mysocket)
+		return mysocket
 		
 	def validateIP(self, ip):
 		from IPy import IP
@@ -45,7 +46,14 @@ class HarvesterClient:
 		except ValueError:
 			print ip, "is not a valid IP address"
 			sys.exit()
-		
+	
+	def connectToOtherClients(self, mysocket):
+		print "connecting to other clients"
+
+	def listenOnSocket(self, mysocket):
+		while 1:
+			print "Still listening"
+			gevent.sleep(10)
 	
 	def __init__(self, ip):
 		self.peerlist = []
@@ -54,7 +62,8 @@ class HarvesterClient:
 		self.validateIP(ip)
 		self.server_ip = ip
 		#create its own chat socket
-		self.connectToServer(self.server_ip)
-		
+		self.chatComm = self.connectToServer(self.server_ip)
+		self.connectToOtherClients(self.chatComm)
+		self.listenOnSocket(self.chatComm)
 		
 		

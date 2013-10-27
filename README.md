@@ -17,7 +17,8 @@ Setup environment:
 
 Needed packages:
 	1. IPy (Used for checking ip addresses)
-	2. Termcolor (used by servers to color messages to clients)
+	2. Termcolor (used by clients to color server messages)
+	3. python-twitter (Used to authenticate clients)
 
 Additional things:
 	1. Make sure there's a "log" folder

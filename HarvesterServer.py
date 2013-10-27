@@ -24,7 +24,7 @@ class HarvesterServer:
 		socketfile.write(hello_message)
 		socketfile.flush()
 		self.log("Sent client " + str(address) + "Welcome message")
-		gevent.sleep(1)
+		gevent.sleep(3)
 	
 	def sendClientsList(self, mysocket, address):
 		socketFile = mysocket.makefile()

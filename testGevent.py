@@ -16,11 +16,16 @@ def testLogger():
 	log.log("shit's going down")
 	log.log("Second line")
 	log.close()
+	
+def testAuth():
+	import twiAuth
+	myCreds = twiAuth.twiAuth()
 
 def main():
 	#testGevent()
 	#testHarvester()
-	testLogger()
+	#testLogger()
+	testAuth()
 
 
 
