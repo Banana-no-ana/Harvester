@@ -28,7 +28,9 @@ def main():
 	mode = sys.argv[1]
 	if mode == "server":
 		if len(sys.argv) > 2:
-			serverMode(sys.argv[2])
+			##TODO: put a test for IP
+			ip = socket.gethostbyname(sys.argv[2])
+			serverMode(ip)
 		elif len(sys.argv) == 2:
 			serverMode()
 		

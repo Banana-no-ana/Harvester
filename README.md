@@ -7,8 +7,7 @@ This app aims to make gathering tweets easier by utilizing more developer API ke
 The credentials will never leave the client computer. 
 
 Setup environment:
-	0. sudo apt-get install python-dev
-	1. sudo pip install gevent
+	1. sudo apt-get install python-dev
 	2. Download libevent
 	3. unpack libevent with tar zxvf libevent
 	4. libevent/configure
@@ -20,6 +19,7 @@ Needed packages:
 	1. IPy (Used for checking ip addresses)
 	2. Termcolor (used by clients to color server messages)
 	3. python-twitter (Used to authenticate clients)
+	4. easytime (Used to log time)
 
 Additional things:
 	1. Make sure there's a "log" folder
