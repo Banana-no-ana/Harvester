@@ -50,8 +50,8 @@ class HarvesterServer:
 		
 	def listenForClients(self):
 		self.log("Starting server with port:" + str(self.port))
-		print "starting the server on IP: ", self.ip, "on port: ", self.port
-		server = StreamServer((self.ip, self.port), self.incomeHandle)
+		print "starting the server on IP: ", '', "on port: ", self.port
+		server = StreamServer(('', self.port), self.incomeHandle)
 		#testServer = StreamServer(('10.175.160.7', self.port), self.incomeHandle)
 		server.serve_forever()
 		testServer.serve_forever()
