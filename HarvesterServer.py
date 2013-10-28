@@ -8,6 +8,7 @@ from gevent.server import StreamServer
 import HarvesterLog
 from termcolor import colored
 import pickle
+import pdb
 
 class HarvesterServer:
 	def updateClients(self, address):
@@ -40,16 +41,17 @@ class HarvesterServer:
 		print self.log("incoming request from: " + str(address))
 		self.welcomeClient(mysocket, address)
 		self.sendClientsList(mysocket, address)
-		print self.clientlist
+		print "Current client list: ", self.clientList
 		self.updateClients(address)
 		
 	def listenForClients(self):
 		self.log("Starting server with port:" + str(self.port))
-		server = StreamServer(('10.175.160.7', self.port), self.incomeHandle)
+		server = StreamServer((self.ip, self.port), self.incomeHandle)
 		server.serve_forever()
 
-	def __init__(self):
-		print "Welcome to twitter Harvester server"	
+	def __init__(self, ip):
+		print "Welcome to twitter Harvester server"
+		self.ip = ip	
 		self.clientlist = []
 		self.logger = HarvesterLog.HarvesterLog("server")
 		self.port = 21002

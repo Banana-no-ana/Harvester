@@ -6,8 +6,10 @@ import socket
 
 mode = ""
 
-def serverMode():
-	myServer = HarvesterServer.HarvesterServer()
+def serverMode(IP="168.62.9.176"):
+	#How should the server get its own ip?
+	#I'm expecting users to put in an ip
+	myServer = HarvesterServer.HarvesterServer(IP)
 	
 	
 def clientMode(ip):
@@ -25,7 +27,10 @@ def main():
 	global mode
 	mode = sys.argv[1]
 	if mode == "server":
-		serverMode()
+		if len(sys.argv) > 2:
+			serverMode(sys.argv[2])
+		elif len(sys.argv) == 2:
+			serverMode()
 		
 	elif mode == "client":
 		if len(sys.argv) == 3:
