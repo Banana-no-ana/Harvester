@@ -41,27 +41,22 @@ class HarvesterServer:
 		print self.log("incoming request from: " + str(address))
 		self.welcomeClient(mysocket, address)
 		self.sendClientsList(mysocket, address)
-		print "Current client list: ", self.clientlist
 		self.updateClients(address)
-	
-	def wtfHandle(self, wtfsocket, wtfaddress):
-		print "Connection came in"
-		print wtfaddress
+		print "Current client list: ", self.clientlist
+		
 		
 	def listenForClients(self):
 		self.log("Starting server with port:" + str(self.port))
-		print "starting the server on IP: ", '', "on port: ", self.port
+		print "starting the server on port: ", self.port
 		server = StreamServer(('', self.port), self.incomeHandle)
-		#testServer = StreamServer(('10.175.160.7', self.port), self.incomeHandle)
 		server.serve_forever()
-		testServer.serve_forever()
-
-	def __init__(self, ip):
+		
+	def __init__(self):
 		print "Welcome to twitter Harvester server"
-		self.ip = ip
 		self.clientlist = []
 		self.logger = HarvesterLog.HarvesterLog("server")
 		self.port = 20002
 		self.listenForClients()
+		self.commandQueue = []
 		
 

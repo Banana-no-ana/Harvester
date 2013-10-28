@@ -38,7 +38,6 @@ class HarvesterClient:
 	def validateIP(self, ip):
 		from IPy import IP
 		if ip == "localhost":
-			print ip
 			ip = "0.0.0.0"
 		try:
 			IP(ip)
@@ -48,12 +47,12 @@ class HarvesterClient:
 			sys.exit()
 	
 	def connectToOtherClients(self, mysocket):
-		print "connecting to other clients"
+		print "connecting to other clients, listed here: ", self.peerlist		
 
 	def listenOnSocket(self, mysocket):
 		while 1:
 			print "Still listening"
-			gevent.sleep(10)
+			gevent.sleep(20)
 	
 	def __init__(self, ip):
 		self.peerlist = []

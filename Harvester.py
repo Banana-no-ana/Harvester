@@ -6,10 +6,10 @@ import socket
 
 mode = ""
 
-def serverMode(IP="168.62.9.176"):
+def serverMode():
 	#How should the server get its own ip?
 	#I'm expecting users to put in an ip
-	myServer = HarvesterServer.HarvesterServer(IP)
+	myServer = HarvesterServer.HarvesterServer()
 	
 	
 def clientMode(ip):
@@ -27,20 +27,16 @@ def main():
 	global mode
 	mode = sys.argv[1]
 	if mode == "server":
-		if len(sys.argv) > 2:
-			##TODO: put a test for IP
-			ip = socket.gethostbyname(sys.argv[2])
-			serverMode(ip)
-		elif len(sys.argv) == 2:
+		if len(sys.argv) == 2:
 			serverMode()
 		
 	elif mode == "client":
 		if len(sys.argv) == 3:
-			print "Connecting to your own server"
+			print "Connecting to your own server with ip: ", sys.argv[2]
 			ip = sys.argv[2]
 		if len(sys.argv) == 2:
 			print "Defaulting to using developer's cluster"
-			ip = socket.gethostbyname('ec2-50-18-231-70.us-west-1.compute.amazonaws.com')
+			ip = socket.gethostbyname('play4trickster.cloudapp.net')
 		clientMode(ip)	
 
 
