@@ -54,7 +54,7 @@ class HarvesterServer:
 		self.ip = ip	
 		self.clientlist = []
 		self.logger = HarvesterLog.HarvesterLog("server")
-		self.port = 21002
+		self.port = 20002
 		self.listenForClients()
 		
 

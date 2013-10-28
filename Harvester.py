@@ -19,7 +19,7 @@ def clientMode(ip):
 
 def main():
 	if len(sys.argv) < 2:
-		print "Usage: Harvester <Server|Client> (Client address)"
+		print "Usage: Harvester <Server|Client> (IP address)"
 		print "e.g.: Python Harvester.py Server"
 		print "or: Python Harvester.py Client 10.0.10.1"
 		sys.exit()	
