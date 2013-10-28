@@ -30,7 +30,7 @@ class HarvesterClient:
 	#The socket should be the command socket
 	def connectToServer(self, ip):
 		self.log("Connecting to server on " + str(ip))
-		mysocket = socket.create_connection((ip, server_port), 20)
+		mysocket = socket.create_connection((ip, self.server_port), 20)
 		self.receiveWelcomeMessage(mysocket)
 		self.updateClientsList(mysocket)
 		return mysocket

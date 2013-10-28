@@ -46,12 +46,13 @@ class HarvesterServer:
 		
 	def listenForClients(self):
 		self.log("Starting server with port:" + str(self.port))
+		print "starting the server on IP: ", self.ip, "on port: ", self.port
 		server = StreamServer((self.ip, self.port), self.incomeHandle)
 		server.serve_forever()
 
 	def __init__(self, ip):
 		print "Welcome to twitter Harvester server"
-		self.ip = ip	
+		self.ip = ip
 		self.clientlist = []
 		self.logger = HarvesterLog.HarvesterLog("server")
 		self.port = 20002
