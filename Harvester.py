@@ -40,7 +40,7 @@ def main():
 			ip = sys.argv[2]
 		if len(sys.argv) == 2:
 			print "Defaulting to using developer's cluster"
-			ip = socket.gethostbyname('play4trickster.cloudapp.net')
+			ip = socket.gethostbyname('ec2-50-18-231-70.us-west-1.compute.amazonaws.com')
 		clientMode(ip)	
 
 

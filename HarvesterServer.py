@@ -41,7 +41,7 @@ class HarvesterServer:
 		print self.log("incoming request from: " + str(address))
 		self.welcomeClient(mysocket, address)
 		self.sendClientsList(mysocket, address)
-		print "Current client list: ", self.clientList
+		print "Current client list: ", self.clientlist
 		self.updateClients(address)
 	
 	def wtfHandle(self, wtfsocket, wtfaddress):
