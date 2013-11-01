@@ -37,7 +37,9 @@ class twiAuth:
 			print "Twitter authentication failed with the given authenticators. "
 		else:
 			return testApi
-
+	
+	def testApi(self):
+		pass
 
 	def __init__(self):
 		self.ck = ""
@@ -48,6 +50,8 @@ class twiAuth:
 		if self.loadCredentialfile() == False:
 			return
 		self.parseCredFile()
-		self.twitterApi = self.authCreds()
+		self.Api = self.authCreds()
+		self.testApi()
+		
 
 		

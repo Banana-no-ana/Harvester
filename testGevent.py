@@ -8,7 +8,8 @@ def testGevent():
 	
 
 def testHarvester():
-	Harvester.runServer()
+	#Harvester.runServer()
+	pass
 
 def testLogger():
 	import HarvesterLog
@@ -20,12 +21,14 @@ def testLogger():
 def testAuth():
 	import twiAuth
 	myCreds = twiAuth.twiAuth()
-
+	data = myCreds.Api.GetStreamSample()
+	for line in data:
+		print line
 def main():
 	#testGevent()
 	#testHarvester()
 	#testLogger()
-	testAuth()
+	#testAuth()
 
 
 
