@@ -88,9 +88,11 @@ class HarvesterClient:
 		self.validateIP(ip)
 		self.server_ip = ip
 		self.server_port = 20002
+		self.chatComm = self.connectToServer(self.server_ip)
+		print "Client attempting to connect to database"
 		self.dbConn = self.connectToDB()
 		#create its own chat socket
-		self.chatComm = self.connectToServer(self.server_ip)
+		
 		self.connectToOtherClients(self.chatComm)
 		self.clientListener = Greenlet.spawn(self.listenOnSocket)
 		
