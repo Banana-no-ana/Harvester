@@ -8,7 +8,7 @@ from gevent import socket
 import gevent
 import pickle
 from termcolor import colored
-import pyodbc
+import MySQLdb
 
 class HarvesterClient:
 	def log(self, message):
@@ -60,9 +60,19 @@ class HarvesterClient:
 			gevent.sleep(20)
 			
 	def connectToDataBase(self):
-		cnx = pyodbc.connect('DRIVER=FreeTDS;SERVER=tcp:kvanx064og.database.windows.net,1433;Database=HarvesterDB;Uid=genericClient@kvanx064og;Pwd=pass4Client;Encrypt=yes;Connection Timeout=30;TDS_Version=5.0')
-		cursor = cnx.cursor()
-		return cursor
+		conn = MySQLdb.connect (host = "twida.cloudapp.net",
+                           user = "genericClient",
+                           passwd = "pass4Client",
+                           db = "HarvestDB")
+		cursor = conn.cursor()
+		try: 
+			#Test the connection
+			cursor.execute ("SELECT VERSION()")
+			row = cursor.fetchone ()
+			print "server version:", row[0]
+		except ValueError:
+			pass
+		return cursor;
 	
 	def __init__(self, ip):
 		self.peerlist = []
