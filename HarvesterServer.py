@@ -6,9 +6,8 @@ from gevent import monkey
 monkey.patch_all()
 from gevent.server import StreamServer
 import HarvesterLog
-from termcolor import colored
 import pickle
-import pdb
+#import pdb
 
 class HarvesterServer:
 	def updateClients(self, address):
@@ -26,8 +25,14 @@ class HarvesterServer:
 		socketfile.flush()
 		self.log("Sent client " + str(address) + "Welcome message")
 		gevent.sleep(3)
+		
+	def checkClients(self):
+		#TODO: Fill in check clients code
+		pass
 	
 	def sendClientsList(self, mysocket, address):
+		#Check client list to see if they're still online, remove the ones that aren't
+		self.checkClients()
 		socketFile = mysocket.makefile()
 		if self.clientlist:
 			self.log("Sent client list of clients" + str(self.clientlist))
@@ -50,6 +55,7 @@ class HarvesterServer:
 		print "starting the server on port: ", self.port
 		server = StreamServer(('', self.port), self.incomeHandle)
 		server.serve_forever()
+		print "listening...."
 		
 	def __init__(self):
 		print "Welcome to twitter Harvester server"
