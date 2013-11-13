@@ -10,6 +10,8 @@ import gevent
 import pickle
 from termcolor import colored
 import MySQLdb
+import Queue
+import datetime
 
 class HarvesterClient:
 	def log(self, message):
@@ -74,11 +76,36 @@ class HarvesterClient:
 		try: 
 			#Test the connection
 			cursor.execute ("SELECT VERSION()")
-			row = cursor.fetchone ()
+			print "Database connected"
+			row = cursor.fetchone()
 			print "server version:", row[0]
 		except ValueError:
 			pass
-		return cursor;
+		return conn;
+	
+	def grabIDs(self):
+		#TODO: automatically grab IDs given a particular location
+		#put IDs grabbed into self.IDqueue
+		#3 sample IDs:496655421, 14601890, 194357523
+		samples = [496655421, 14601890, 194357523]
+		time = datetime.datetime.now()
+		geo = "49.168236527256,-122.857360839844,50km"
+		for ID in samples:
+			self.IDqueue.put((ID, time, geo))
+	
+	def putIDs(self):
+		#TODO: take ID from self.IDqueueu
+		#GeoCode: 49.168236527256,-122.857360839844,50km
+		while True:
+			ID, time, geo =  self.IDqueue.get(True)
+			dbcursor = self.dbConn.cursor()
+			try:
+				dbcursor.execute("INSERT INTO userIDs(UserID, DateAdded, Location) VALUES(%s, %s, %s)", (str(ID), time, geo))
+			except MySQLdb.IntegrityError:
+				#If the ID is duplicate, ignore it. 
+				pass
+			self.dbConn.commit()
+				
 	
 	def __init__(self, ip):
 		self.peerlist = []
@@ -87,13 +114,18 @@ class HarvesterClient:
 		self.validateIP(ip)
 		self.server_ip = ip
 		self.server_port = 20002
-		self.chatComm = self.connectToServer(self.server_ip)
+		#self.chatComm = self.connectToServer(self.server_ip)
 		print "Client attempting to connect to database"
 		self.dbConn = self.connectToDB()
+		self.IDqueue = Queue.Queue()
+		self.IDGrabber = Greenlet.spawn(self.grabIDs)
+		self.IDputter = Greenlet.spawn(self.putIDs)
+		gevent.sleep(5)
+		
 		#create its own chat socket
 		
-		self.connectToOtherClients(self.chatComm)
-		self.clientListener = Greenlet.spawn(self.listenOnSocket)
+		#self.connectToOtherClients(self.chatComm)
+		#self.clientListener = Greenlet.spawn(self.listenOnSocket)
 		
 		#TODO: Need to make client constantly check the client list. 
 		#TODO: Spawn a userID grabber
