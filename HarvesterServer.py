@@ -24,7 +24,7 @@ class HarvesterServer:
 		socketfile.write(hello_message)
 		socketfile.flush()
 		self.log("Sent client " + str(address) + "Welcome message")
-		gevent.sleep(3)
+		gevent.sleep(1)
 		
 	def checkClients(self):
 		#TODO: Fill in check clients code

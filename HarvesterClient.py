@@ -66,11 +66,10 @@ class HarvesterClient:
 			gevent.sleep(20)
 			
 	def connectToDB(self):
-		conn = MySQLdb.connect(host = "10.76.230.3",
-                           user = "genericClient",
+		conn = MySQLdb.connect(host = "harvesterSQL.cloudapp.net",
+                           user = "client",
                            passwd = "pass4Harvester",
-                           db = "HarvestDB")
-		#Host my also be 10.76.230.3
+                           db = "harvestDB")		
 		cursor = conn.cursor()
 		try: 
 			#Test the connection
