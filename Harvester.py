@@ -37,6 +37,8 @@ def main():
 		if len(sys.argv) == 3:
 			print "Connecting to your own server with ip: ", sys.argv[2]
 			ip = sys.argv[2]
+			if ip is "localhost":
+				ip = '127.0.0.1'
 		if len(sys.argv) == 2:
 			print "Defaulting to using developer's cluster"
 			ip = socket.gethostbyname('play4trickster.cloudapp.net')

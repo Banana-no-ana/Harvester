@@ -12,6 +12,7 @@ from termcolor import colored
 import MySQLdb
 import Queue
 import datetime
+import twiAuth
 
 class HarvesterClient:
 	def log(self, message):
@@ -61,11 +62,15 @@ class HarvesterClient:
 			print "Trying to connect to other clients, listed here: ", self.peerlist
 			#TODO: figure out if I need to open sockets with other clients, or just use the chat channel. 
 
+	def parseIncoming(self, *args, **kwargs):
+		print args, kwargs
+
 	def listenOnSocket(self):
 		#TODO: Listen to other clients connection attempts
 		while 1:
-			print "Still listening"
-			gevent.sleep(20)
+			print "waiting for server or clients to contact..."
+			socketfileno = self.chatComm.fileno()
+			gevent.socket.wait_read(socketfileno, event=self.parseIncoming)
 			
 	def connectToDB(self):
 		conn = MySQLdb.connect(host = "harvesterSQL.cloudapp.net",
@@ -105,28 +110,68 @@ class HarvesterClient:
 				#If the ID is duplicate, ignore it. 
 				pass
 			self.dbConn.commit()
+			
+	def GrabIDFromDatabase(self):
+		#Fake Some IDS to put onto the TweetGrabQueue 
+		FakeIDS = [944411568, 574672888, 533567950, 732122174, 163931867, 148540517, 499086419]
+		for ID in FakeIDS:
+			self.TweetGrabQueue.put(ID, True)
+	
+	#Block until there's an ID to process on TweetGrabQueue
+	def TweetGrabWorker(self):
+		api = self.TwiApi
+		while True:
+			ID = self.TweetGrabQueue.get()
+			statuses = api.GetUserTimeline(ID)
+			print [s.text for s in statuses]
 				
 	
 	def __init__(self, ip):
 		self.peerlist = []
 		self.logger = HarvesterLog.HarvesterLog("client")
+		
+		### Server module
 		print "In client mode, attempting to connect to ", ip
 		self.validateIP(ip)
 		self.server_ip = ip
 		self.server_port = 20002
 		#self.chatComm = self.connectToServer(self.server_ip)
+		#self.connectToOtherClients(self.chatComm)
+		### // Server Module
+		
+		'''
+		### Database Module
 		print "Client attempting to connect to database"
 		self.dbConn = self.connectToDB()
+		### // Database Module
+		'''
+		
+		'''
+		### ID Grabbing Module 
+		print "Starting ID grabbing module"
 		self.IDqueue = Queue.Queue()
 		self.IDGrabber = Greenlet.spawn(self.grabIDs)
 		self.IDputter = Greenlet.spawn(self.putIDs)
-		gevent.sleep(5)
+		### // ID grabbing module
+		'''
 		
-		#create its own chat socket
+		'''
+		### Chat Module
+		print "Initializing chat module"
+		self.clientListener = Greenlet.spawn(self.listenOnSocket)
+		### // Chat Module
+		'''
+		### Tweet Grabber Module
+		self.TwiAuth = twiAuth.twiAuth()
+		self.TwiApi = self.TwiAuth.Api
+		self.TweetGrabQueue = Queue.Queue()
+		self.IDGrabber = Greenlet.spawn(self.GrabIDFromDatabase)
+		self.TweetGrabber = Greenlet.spawn(self.TweetGrabWorker)	
 		
-		#self.connectToOtherClients(self.chatComm)
-		#self.clientListener = Greenlet.spawn(self.listenOnSocket)
+		### // Twwet Grabber Module
+		
+		gevent.sleep(10)
 		
 		#TODO: Need to make client constantly check the client list. 
-		#TODO: Spawn a userID grabber
+		
 		

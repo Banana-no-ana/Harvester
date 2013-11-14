@@ -33,14 +33,11 @@ class twiAuth:
 		testApi = twitter.Api(consumer_key=self.ck, consumer_secret=self.cks, access_token_key=self.at, access_token_secret=self.ats)
 		try: 
 			testApi.VerifyCredentials()
-		except TwitterError:
+		except twitter.TwitterError:
 			print "Twitter authentication failed with the given authenticators. "
 		else:
 			return testApi
 	
-	def testApi(self):
-		pass
-
 	def __init__(self):
 		self.ck = ""
 		self.cks = ""
@@ -51,7 +48,7 @@ class twiAuth:
 			return
 		self.parseCredFile()
 		self.Api = self.authCreds()
-		self.testApi()
+		
 		
 
 		
