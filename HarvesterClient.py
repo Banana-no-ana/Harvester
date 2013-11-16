@@ -7,6 +7,7 @@ from gevent import Greenlet
 monkey.patch_all()
 from gevent import socket
 import gevent
+from gevent import pool
 import pickle
 from termcolor import colored
 import MySQLdb
@@ -71,21 +72,24 @@ class HarvesterClient:
 			print "waiting for server or clients to contact..."
 			socketfileno = self.chatComm.fileno()
 			gevent.socket.wait_read(socketfileno, event=self.parseIncoming)
-			
-	def connectToDB(self):
-		conn = MySQLdb.connect(host = "harvesterSQL.cloudapp.net",
-                           user = "client",
-                           passwd = "pass4Harvester",
-                           db = "harvestDB")		
+	
+	def testDBConn(self, conn):
 		cursor = conn.cursor()
 		try: 
 			#Test the connection
 			cursor.execute ("SELECT VERSION()")
 			print "Database connected"
 			row = cursor.fetchone()
-			print "server version:", row[0]
+			print "server version:", row[0]		
 		except ValueError:
-			pass
+			return ValueError
+		
+	
+	def connectToDB(self):
+		conn = MySQLdb.connect(host = "harvesterSQL.cloudapp.net",
+                           user = "client",
+                           passwd = "pass4Harvester",
+                           db = "harvestDB")		
 		return conn;
 	
 	def grabIDs(self):
@@ -116,14 +120,38 @@ class HarvesterClient:
 		FakeIDS = [944411568, 574672888, 533567950, 732122174, 163931867, 148540517, 499086419]
 		for ID in FakeIDS:
 			self.TweetGrabQueue.put(ID, True)
+			
+	def getYear(self, lastOne):
+		TweetTime = lastOne[0][u'created_at']
+		year =  TweetTime.split(' ')[-1].encode('UTF-8')
+		return year
+	
+	def putUserTweetsInDatabase(self, ID):
+		api = self.TwiApi
+		dbConnection = self.connectToDB()
+		curosr = dbConnection.cursor()
+		#Get the latest one, and work your way backwards. 
+		lastOne = api.get_user_timeline(user_id=ID, count=1)
+		lastTweetID = lastOne[0][u'id']
+		year = self.getYear(lastOne)
+		
+			
+		
+		
+
+		
+		
+		#TODO: Fill in raw tweets into the database
 	
 	#Block until there's an ID to process on TweetGrabQueue
-	def TweetGrabWorker(self):
-		api = self.TwiApi
+	def TweetGrabWorker(self):		
+		myPool = pool.Pool(3)
 		while True:
 			ID = self.TweetGrabQueue.get()
-			statuses = api.GetUserTimeline(ID)
-			print [s.text for s in statuses]
+			myPool.spawn(self.putUserTweetsInDatabase, ID)
+			
+			#TODO: Duplicate the 
+			
 				
 	
 	def __init__(self, ip):
@@ -143,6 +171,7 @@ class HarvesterClient:
 		### Database Module
 		print "Client attempting to connect to database"
 		self.dbConn = self.connectToDB()
+		self.testDBConn(self.dbConn)
 		### // Database Module
 		'''
 		

@@ -21,9 +21,9 @@ def testLogger():
 def testTwitAuth():
 	import twiAuth
 	myCreds = twiAuth.twiAuth()
-	data = myCreds.Api.GetStreamSample()
+	data = myCreds.Api.get_user_timeline(user_id=944411568, count=200)
 	for line in data:
-		print line
+		print line[u'created_at']
 		
 def testDBConnection():
 	import HarvesterClient
@@ -37,8 +37,8 @@ def main():
 	#testGevent()
 	#testHarvester()
 	#testLogger()
-	#testTwitAuth()
-	testDBConnection()
+	testTwitAuth()
+	#testDBConnection()
 	pass
 
 

@@ -1,6 +1,8 @@
 ##twiAuth.py
 ##Harvester Twitter Authentication module
 import glob
+from twython import Twython
+import twython
 import twitter
 from termcolor import colored
 
@@ -30,10 +32,11 @@ class twiAuth:
 				self.ats = cred
 		
 	def authCreds(self):
-		testApi = twitter.Api(consumer_key=self.ck, consumer_secret=self.cks, access_token_key=self.at, access_token_secret=self.ats)
+		testApi = Twython(self.ck, self.cks, self.at, self.ats) 
+		#twitter.Api(consumer_key=self.ck, consumer_secret=self.cks, access_token_key=self.at, access_token_secret=self.ats)
 		try: 
-			testApi.VerifyCredentials()
-		except twitter.TwitterError:
+			testApi.verify_credentials()
+		except twython.exceptions.TwythonAuthError:
 			print "Twitter authentication failed with the given authenticators. "
 		else:
 			return testApi
