@@ -13,6 +13,7 @@ from termcolor import colored
 import MySQLdb
 import Queue
 import datetime
+import time
 import twiAuth
 
 class HarvesterClient:
@@ -121,25 +122,41 @@ class HarvesterClient:
 		for ID in FakeIDS:
 			self.TweetGrabQueue.put(ID, True)
 			
-	def getYear(self, lastOne):
-		TweetTime = lastOne[0][u'created_at']
-		year =  TweetTime.split(' ')[-1].encode('UTF-8')
-		return year
 	
 	def putUserTweetsInDatabase(self, ID):
 		api = self.TwiApi
 		dbConnection = self.connectToDB()
-		curosr = dbConnection.cursor()
+		cursor = dbConnection.cursor()
+		cutoff = datetime.datetime(2012, 01, 01)
 		#Get the latest one, and work your way backwards. 
 		lastOne = api.get_user_timeline(user_id=ID, count=1)
 		lastTweetID = lastOne[0][u'id']
-		year = self.getYear(lastOne)
+		ts = time.strftime('%Y-%m-%d %H:%M:%S', time.strptime(lastOne[0][u'created_at'],'%a %b %d %H:%M:%S +0000 %Y'))
+		realtime = datetime.datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")		
 		
+		#While the year is still after 2012, keep searching for more tweets. Remember to sleep
+		while realtime > cutoff:
+			statuses = api.get_user_timeline(user_id=ID, count=200, max_id=lastTweetID)
+			for status in statuses:
+				#I need: Text, UserID, Tweet ID, Time, Hashtags
+				text = status[u'text'].encode('UTF-8')
+				UID = status[u'user'][u'id']
+				TweetID = status[u'id']
+				HashTags = status[u'entities'][u'hashtags']
+				Time = time.strftime('%Y-%m-%d %H:%M:%S', time.strptime( status[u'created_at'],'%a %b %d %H:%M:%S +0000 %Y'))
+				
+				try:
+					cursor.execute("INSERT INTO testTweets(UserID, TweetID, Text, Time, HashTags) VALUES(%s, %s, %s, %s, %s)", (UID, TweetID, text, Time, str(HashTags)))
+				except MySQLdb.IntegrityError:
+					#If the ID is duplicate, ignore it. 
+					pass
+				dbConnection.commit()
+				#TODO: Change so that it can grab the ones before as well. 
+				
+				print UID, TweetID, text, Time, str(HashTags)
+				
+				return
 			
-		
-		
-
-		
 		
 		#TODO: Fill in raw tweets into the database
 	
@@ -148,11 +165,8 @@ class HarvesterClient:
 		myPool = pool.Pool(3)
 		while True:
 			ID = self.TweetGrabQueue.get()
-			myPool.spawn(self.putUserTweetsInDatabase, ID)
-			
-			#TODO: Duplicate the 
-			
-				
+			myPool.spawn(self.putUserTweetsInDatabase, ID)		
+						
 	
 	def __init__(self, ip):
 		self.peerlist = []
