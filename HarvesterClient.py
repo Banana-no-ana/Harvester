@@ -87,7 +87,7 @@ class HarvesterClient:
 		
 	
 	def connectToDB(self):
-		conn = MySQLdb.connect(host = "harvesterSQL.cloudapp.net",
+		conn = MySQLdb.connect(host = "harvesterSQL2.cloudapp.net",
                            user = "client",
                            passwd = "pass4Harvester",
                            db = "harvestDB")		
@@ -128,15 +128,16 @@ class HarvesterClient:
 		dbConnection = self.connectToDB()
 		cursor = dbConnection.cursor()
 		cutoff = datetime.datetime(2012, 01, 01)
-		#Get the latest one, and work your way backwards. 
-		lastOne = api.get_user_timeline(user_id=ID, count=1)
-		lastTweetID = lastOne[0][u'id']
-		ts = time.strftime('%Y-%m-%d %H:%M:%S', time.strptime(lastOne[0][u'created_at'],'%a %b %d %H:%M:%S +0000 %Y'))
-		realtime = datetime.datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")		
+		#This tweet ID is about Nov.16, 2013 
+		lastTweetID = 1401925121566576641
+		realtime = datetime.datetime.now()
+		numTweets = 0
+		#TODO: Put into the USERID database that This is the last Tweet we got from them
 		
 		#While the year is still after 2012, keep searching for more tweets. Remember to sleep
-		while realtime > cutoff:
+		while (realtime > cutoff and numTweets < 3200):
 			statuses = api.get_user_timeline(user_id=ID, count=200, max_id=lastTweetID)
+			self.logger.log("Getting Twitter user timeline: " + str(ID) + ", already gotten: " + str(numTweets))
 			for status in statuses:
 				#I need: Text, UserID, Tweet ID, Time, Hashtags
 				text = status[u'text'].encode('UTF-8')
@@ -144,33 +145,33 @@ class HarvesterClient:
 				TweetID = status[u'id']
 				HashTags = status[u'entities'][u'hashtags']
 				Time = time.strftime('%Y-%m-%d %H:%M:%S', time.strptime( status[u'created_at'],'%a %b %d %H:%M:%S +0000 %Y'))
-				
-				try:
-					cursor.execute("INSERT INTO testTweets(UserID, TweetID, Text, Time, HashTags) VALUES(%s, %s, %s, %s, %s)", (UID, TweetID, text, Time, str(HashTags)))
+				try:					
+					cursor.execute("INSERT INTO testTweets(UserID, TweetID, Text, Time, HashTags) VALUES(%s, %s, %s, %s, %s)", (str(UID), str(TweetID), text, Time, str(HashTags)))
+					#print "inserting into the database: UserID, TweetID, Text, Time, Hashtags: ", (str(UID), str(TweetID), text, Time, str(HashTags))
+					print statuses.index(status), UID, TweetID, Time, 
 				except MySQLdb.IntegrityError:
 					#If the ID is duplicate, ignore it. 
 					pass
-				dbConnection.commit()
-				#TODO: Change so that it can grab the ones before as well. 
-				
-				print UID, TweetID, text, Time, str(HashTags)
-				
-				return
+
+				#print UID, TweetID, text, Time, str(HashTags)
+			dbConnection.commit()
+			realtime = datetime.datetime.strptime(Time, "%Y-%m-%d %H:%M:%S")
+			lastTweetID = UID
+			numTweets = numTweets + 200
 			
-		
-		#TODO: Fill in raw tweets into the database
+		self.logger.log("Done with user timeline: " + str(ID) + ", already gotten: " + str(numTweets))
 	
 	#Block until there's an ID to process on TweetGrabQueue
 	def TweetGrabWorker(self):		
 		myPool = pool.Pool(3)
 		while True:
 			ID = self.TweetGrabQueue.get()
-			myPool.spawn(self.putUserTweetsInDatabase, ID)		
-						
+			myPool.spawn(self.putUserTweetsInDatabase, ID)
 	
 	def __init__(self, ip):
 		self.peerlist = []
 		self.logger = HarvesterLog.HarvesterLog("client")
+		self.numAPICalls = 0
 		
 		### Server module
 		print "In client mode, attempting to connect to ", ip
@@ -181,13 +182,13 @@ class HarvesterClient:
 		#self.connectToOtherClients(self.chatComm)
 		### // Server Module
 		
-		'''
+		
 		### Database Module
 		print "Client attempting to connect to database"
 		self.dbConn = self.connectToDB()
 		self.testDBConn(self.dbConn)
 		### // Database Module
-		'''
+		
 		
 		'''
 		### ID Grabbing Module 
@@ -209,11 +210,12 @@ class HarvesterClient:
 		self.TwiApi = self.TwiAuth.Api
 		self.TweetGrabQueue = Queue.Queue()
 		self.IDGrabber = Greenlet.spawn(self.GrabIDFromDatabase)
-		self.TweetGrabber = Greenlet.spawn(self.TweetGrabWorker)	
+		self.TweetGrabber = Greenlet.spawn(self.TweetGrabWorker)
+		
+		while True:
+			gevent.sleep(2000)
 		
 		### // Twwet Grabber Module
-		
-		gevent.sleep(10)
 		
 		#TODO: Need to make client constantly check the client list. 
 		
