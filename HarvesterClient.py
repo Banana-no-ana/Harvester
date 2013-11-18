@@ -216,9 +216,9 @@ class HarvesterClient:
 			
 		self.logger.log("Done with user timeline: " + str(ID) + ", already gotten: " + str(numTweets))
 	
-	def TweetInserter(self):
-		print "Spawned a tweet inserter into database"
-		self.log("Spawned a tweet inserter into database")
+	def TweetInserter(self, ID):
+		print "Spawned a tweet inserter into database", ID
+		self.log("Spawned a tweet inserter into database" + str(ID))
 		dbConnection = self.connectToDB()
 		cursor = dbConnection.cursor()
 		numInserts = 0
@@ -235,8 +235,8 @@ class HarvesterClient:
 				dbConnection.commit()
 				numInserts = 0
 		
-	def GrabTweetsByID(self, ID):
-		print "In producer"
+	def GrabTweetsByID(self, ID, num):
+		print "In producer", num
 		api = self.TwiApi
 		cutoff = datetime.datetime(2012, 01, 01)
 		lastTweetID = 1401925121566576641
@@ -263,11 +263,21 @@ class HarvesterClient:
 		
 	
 	#Block until there's an ID to process on TweetGrabQueue
-	def TweetGrabWorker(self):		
+	def TweetGrabWorker(self, myNum):		
 		while True:
 			ID = self.TweetIDQueue.get()
-			self.GrabTweetsByID(ID)
+			self.GrabTweetsByID(ID, myNum)
 			
+	def spawnTweetWorkers(self):
+		Producer = 1
+		Consumer = 1
+		while not self.TweetGrabPool.full():
+			self.TweetGrabPool.spawn(self.TweetGrabWorker, Producer)
+			Producer = Producer +1
+			
+		while not self.TweetInsertPool.full():
+			self.TweetInsertPool.spawn(self.TweetInserter, Consumer)
+			Consumer = Consumer +1
 	
 	def __init__(self, ip):
 		self.peerlist = []
@@ -318,14 +328,13 @@ class HarvesterClient:
 		### Tweet Grabber Module
 		self.TwiAuth = twiAuth.twiAuth()
 		self.TwiApi = self.TwiAuth.Api
-		self.TweetIDQueue = Queue.Queue()
-		self.TweetGrabbedQueue = Queue.Queue()
+		self.TweetIDQueue = Queue.Queue(10)
+		self.TweetGrabbedQueue = Queue.Queue(6000)
 		self.IDGrabber = Greenlet.spawn(self.GrabIDFromDatabase)
 		self.TweetInsertPool = gevent.pool.Pool(10)
 		self.TweetGrabPool = gevent.pool.Pool(4)
-		while True:
-			self.TweetGrabPool.spawn(self.TweetGrabWorker)
-			self.TweetInsertPool.spawn(self.TweetInserter)
+		self.spawnTweetWorkers()
+		
 		#self.resetUserDatabase()
 		
 		while True:
