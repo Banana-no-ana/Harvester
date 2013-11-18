@@ -236,7 +236,7 @@ class HarvesterClient:
 				numInserts = 0
 		
 	def GrabTweetsByID(self, ID, num):
-		print "In producer", num
+		print "In Tweet Grabber", num
 		api = self.TwiApi
 		cutoff = datetime.datetime(2012, 01, 01)
 		lastTweetID = 1401925121566576641
