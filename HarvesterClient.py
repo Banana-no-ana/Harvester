@@ -15,6 +15,7 @@ import Queue
 import datetime
 import time
 import twiAuth
+import glob
 
 class HarvesterClient:
 	def log(self, message):
@@ -95,8 +96,10 @@ class HarvesterClient:
 	
 	def grabIDs(self):
 		#TODO: automatically grab IDs given a particular location
+		#Right now only takes IDs from a file
 		#put IDs grabbed into self.IDqueue
 		#3 sample IDs:496655421, 14601890, 194357523
+		IDfiles = glob.glob('*.txt')
 		samples = [496655421, 14601890, 194357523]
 		time = datetime.datetime.now()
 		geo = "49.168236527256,-122.857360839844,50km"
@@ -118,9 +121,20 @@ class HarvesterClient:
 			
 	def GrabIDFromDatabase(self):
 		#Fake Some IDS to put onto the TweetGrabQueue 
-		FakeIDS = [944411568, 574672888, 533567950, 732122174, 163931867, 148540517, 499086419]
-		for ID in FakeIDS:
-			self.TweetGrabQueue.put(ID, True)
+		#FakeIDS = [944411568, 574672888, 533567950, 732122174, 163931867, 148540517, 499086419]
+		dbconn = self.connectToDB()
+		cursor = dbconn.cursor()
+		while True:
+			cursor.execute("SELECT * FROM userIDs WHERE NotScanned=0 LIMIT 5")
+			rows = cursor.fetchall()
+			for row in rows:
+				ID = row[0]
+				self.TweetGrabQueue.put(ID, True)
+				cursor.execute("Update userIDs SET NotScanned=1 Where UserID=%s;", ID)
+				print ID
+			gevent.sleep(540)
+			
+		 #TODO: Set The scanned time to now. 
 			
 	
 	def putUserTweetsInDatabase(self, ID):
@@ -145,16 +159,17 @@ class HarvesterClient:
 				TweetID = status[u'id']
 				HashTags = status[u'entities'][u'hashtags']
 				Time = time.strftime('%Y-%m-%d %H:%M:%S', time.strptime( status[u'created_at'],'%a %b %d %H:%M:%S +0000 %Y'))
-				try:					
+				try:
+					print statuses.index(status), UID, TweetID, Time				
 					cursor.execute("INSERT INTO testTweets(UserID, TweetID, Text, Time, HashTags) VALUES(%s, %s, %s, %s, %s)", (str(UID), str(TweetID), text, Time, str(HashTags)))
 					#print "inserting into the database: UserID, TweetID, Text, Time, Hashtags: ", (str(UID), str(TweetID), text, Time, str(HashTags))
-					print statuses.index(status), UID, TweetID, Time, 
+					
 				except MySQLdb.IntegrityError:
 					#If the ID is duplicate, ignore it. 
 					pass
-
+				dbConnection.commit()
 				#print UID, TweetID, text, Time, str(HashTags)
-			dbConnection.commit()
+			
 			realtime = datetime.datetime.strptime(Time, "%Y-%m-%d %H:%M:%S")
 			lastTweetID = UID
 			numTweets = numTweets + 200
@@ -210,7 +225,7 @@ class HarvesterClient:
 		self.TwiApi = self.TwiAuth.Api
 		self.TweetGrabQueue = Queue.Queue()
 		self.IDGrabber = Greenlet.spawn(self.GrabIDFromDatabase)
-		self.TweetGrabber = Greenlet.spawn(self.TweetGrabWorker)
+		#self.TweetGrabber = Greenlet.spawn(self.TweetGrabWorker)
 		
 		while True:
 			gevent.sleep(2000)
