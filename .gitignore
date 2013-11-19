@@ -1,3 +1,7 @@
 *.pyc
 *.log
 privateFile
+err
+test
+testoutput
+AuthFile

@@ -3,7 +3,6 @@
 import glob
 from twython import Twython
 import twython
-import twitter
 from termcolor import colored
 
 class twiAuth:
