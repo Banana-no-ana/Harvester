@@ -11,8 +11,9 @@ This app aims to make gathering tweets easier by utilizing more developer API ke
 
 The credentials will never leave the client computer. 
 
-Setup environment:
+Setup environment in <b>Linux</b>:
 
+	You should get pip for python package management
 	sudo apt-get install python-dev	
 	Download libevent (https://github.com/downloads/libevent/libevent/libevent-2.0.21-stable.tar.gz)	
 	unpack libevent (tar zxvf libevent)

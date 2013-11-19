@@ -96,16 +96,17 @@ class HarvesterClient:
 		return conn;
 	
 	def FolderGrabber(self):
+		print "Spawned a ID grabber to grab IDs in the neighbouring folders"
 		IDfiles = glob.glob('*.txt')
 		moreFiles = glob.glob('IDfiles/*')
 		IDfiles = IDfiles + moreFiles
 		dbconn = self.connectToDB()
 		cursor = dbconn.cursor()
-		time = datetime.datetime.now()
 		realtime = "2013-11-18 20:29:20" 
 		geo = "49.168236527256,-122.857360839844,50km"
-		for file in IDfiles:
-			myfp = open(file)
+		for myfile in IDfiles:
+			print "Openign IDFile: ", file
+			myfp = open(myfile)
 			mycount = 0
 			for line in myfp:
 				ID = line.strip()
@@ -221,20 +222,15 @@ class HarvesterClient:
 		self.log("Spawned a tweet inserter into database" + str(ID))
 		dbConnection = self.connectToDB()
 		cursor = dbConnection.cursor()
-		numInserts = 0
 		while True:
 			status = self.TweetGrabbedQueue.get(True)
 			text, UID, TweetID, HashTags, Time = status
 			try:
 				cursor.execute("INSERT INTO testTweets(UserID, TweetID, Text, Time, HashTags) VALUES(%s, %s, %s, %s, %s)", (str(UID), str(TweetID), text, Time, str(HashTags)))
+				dbConnection.commit()
 			except MySQLdb.IntegrityError:
 				#If the ID is duplicate, ignore it. 
 				pass
-			numInserts = numInserts +1
-			if numInserts > 10:
-				dbConnection.commit()
-				print "making a commit. This shoudl be 10"
-				numInserts = 0
 		
 	def GrabTweetsByID(self, ID, num):
 		print "In Tweet Grabber", num
@@ -311,11 +307,10 @@ class HarvesterClient:
 		### // ID grabbing module
 		'''
 		
-		'''
+		
 		### Input ID from Folder Module
 		self.IDFolderGrabber = Greenlet.spawn(self.FolderGrabber)
 		### // Input ID Module
-		'''
 		
 		'''
 		### Chat Module
@@ -344,6 +339,5 @@ class HarvesterClient:
 		
 		### // Twwet Grabber Module
 		
-		 
 		
 		
