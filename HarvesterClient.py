@@ -146,8 +146,6 @@ class HarvesterClient:
 			self.dbConn.commit()
 			
 	def GrabIDFromDatabase(self):
-		#Fake Some IDS to put onto the TweetGrabQueue 
-		#FakeIDS = [944411568, 574672888, 533567950, 732122174, 163931867, 148540517, 499086419]
 		dbconn = self.connectToDB()
 		cursor = dbconn.cursor()
 		while True:
@@ -158,7 +156,7 @@ class HarvesterClient:
 				self.TweetIDQueue.put(ID, True)
 				cursor.execute("Update userIDs SET NotScanned=1 Where UserID=%s ;", str(ID))
 			dbconn.commit()
-			gevent.sleep(540)
+			gevent.sleep(200)
 			
 		#TODO: Set The scanned time to now. 
 	
@@ -189,10 +187,10 @@ class HarvesterClient:
 		numTweets = 0
 		#TODO: Put into the USERID database that This is the last Tweet we got from them
 		
-		#While the year is still after 2012, keep searching for more tweets. Remember to sleep
+		#While the year is still after 2012, keep searching for more tweets. 
 		while (realtime > cutoff and numTweets < 3200):
 			statuses = api.get_user_timeline(user_id=ID, count=200, max_id=lastTweetID)
-			self.logger.log("Getting Twitter user timeline: " + str(ID) + ", already gotten: " + str(numTweets))
+			self.log("Getting Twitter user timeline: " + str(ID) + ", already gotten: " + str(numTweets))
 			for status in statuses:
 				#I need: Text, UserID, Tweet ID, Time, Hashtags
 				text = status[u'text'].encode('UTF-8')
@@ -201,7 +199,7 @@ class HarvesterClient:
 				HashTags = status[u'entities'][u'hashtags']
 				Time = time.strftime('%Y-%m-%d %H:%M:%S', time.strptime(status[u'created_at'],'%a %b %d %H:%M:%S +0000 %Y'))
 				try:
-					print statuses.index(status), UID, TweetID, Time				
+					print statuses.index(status), UID, TweetID, Time		
 					cursor.execute("INSERT INTO testTweets(UserID, TweetID, Text, Time, HashTags) VALUES(%s, %s, %s, %s, %s)", (str(UID), str(TweetID), text, Time, str(HashTags)))
 					#print "inserting into the database: UserID, TweetID, Text, Time, Hashtags: ", (str(UID), str(TweetID), text, Time, str(HashTags))
 					
@@ -234,6 +232,7 @@ class HarvesterClient:
 		
 	def GrabTweetsByID(self, ID, num):
 		print "In Tweet Grabber", num
+		self.log("Spawned Tweet Grabber" + str(num))
 		api = self.TwiApi
 		cutoff = datetime.datetime(2012, 01, 01)
 		lastTweetID = 1401925121566576641
@@ -246,6 +245,7 @@ class HarvesterClient:
 				self.log("Hitting the limit, this ID Grabber is gonna back off for 300 seconds\n")
 				sys.stderr.write("Hitting the limit, this ID Grabber is gonna back off for 300 seconds")
 				gevent.sleep(300)
+				continue
 			for status in statuses:
 				text = status[u'text'].encode('UTF-8')
 				UID = status[u'user'][u'id']
@@ -256,6 +256,7 @@ class HarvesterClient:
 			realtime = datetime.datetime.strptime(Time, "%Y-%m-%d %H:%M:%S")
 			lastTweetID = UID
 			numTweets = numTweets + 200
+			self.log("Gone through 200 statuses, hopefully they inserted")
 		
 	
 	#Block until there's an ID to process on TweetGrabQueue
@@ -326,8 +327,8 @@ class HarvesterClient:
 		self.TweetIDQueue = Queue.Queue(10)
 		self.TweetGrabbedQueue = Queue.Queue(6000)
 		self.IDGrabber = Greenlet.spawn(self.GrabIDFromDatabase)
-		self.TweetInsertPool = gevent.pool.Pool(10)
-		self.TweetGrabPool = gevent.pool.Pool(4)
+		self.TweetInsertPool = gevent.pool.Pool(4)
+		self.TweetGrabPool = gevent.pool.Pool(2)
 		self.spawnTweetWorkers()
 		
 		#self.resetUserDatabase()
