@@ -233,6 +233,7 @@ class HarvesterClient:
 			numInserts = numInserts +1
 			if numInserts > 10:
 				dbConnection.commit()
+				print "making a commit. This shoudl be 10"
 				numInserts = 0
 		
 	def GrabTweetsByID(self, ID, num):
@@ -255,8 +256,7 @@ class HarvesterClient:
 				TweetID = status[u'id']
 				HashTags = status[u'entities'][u'hashtags']
 				Time = time.strftime('%Y-%m-%d %H:%M:%S', time.strptime(status[u'created_at'],'%a %b %d %H:%M:%S +0000 %Y'))
-				self.TweetGrabbedQueue.put((text, UID, TweetID, HashTags, Time), True)
-				
+				self.TweetGrabbedQueue.put((text, UID, TweetID, HashTags, Time), True)				
 			realtime = datetime.datetime.strptime(Time, "%Y-%m-%d %H:%M:%S")
 			lastTweetID = UID
 			numTweets = numTweets + 200
