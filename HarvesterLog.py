@@ -6,14 +6,19 @@ class HarvesterLog:
 	def now(self):
 		mytime = easytime.utcnow().convert('Canada/Pacific')
 		dateTime = str(mytime).split(".")[0]
-		date, Time = dateTime.split(" ")
+		date, Time = dateTime.split(" ")		
 		return date+Time
 		
 	def log(self, message):
+		self.open()
 		curTime = self.now()
 		myMessage = curTime + " : " + message
 		print(myMessage, file=self.file)
+		self.close()
 		return myMessage
+		
+	def open(self):	
+		self.file = open(self.name, 'a')
 		
 	def close(self):
 		self.file.close()
@@ -23,7 +28,8 @@ class HarvesterLog:
 		self.myType = HarvesterType
 		logfolder = 'log/'
 		startTime = self.now()
-		name = logfolder + self.myType + startTime + '.log'
-		self.file = open(name, 'w')
+		self.name = logfolder + self.myType + startTime + '.log'
+		self.file = open(self.name, 'w')
+		self.file.close()
 		
 	
