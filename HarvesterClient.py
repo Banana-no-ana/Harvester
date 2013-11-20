@@ -82,9 +82,9 @@ class HarvesterClient:
 		try: 
 			#Test the connection
 			cursor.execute ("SELECT VERSION()")
-			print "Database connected"
+			print colored("Harvester SQL Database connected", "green")
 			row = cursor.fetchone()
-			print "server version:", row[0]		
+			print "\t database server version:", row[0]		
 		except ValueError:
 			return ValueError
 		
@@ -202,7 +202,7 @@ class HarvesterClient:
 		dbConnection.close()					
 		
 	def GrabTweetsByID(self, ID, Grabbernum):
-		print "Spawned a Tweet Grabber: ", Grabbernum
+		print "Spawned a Tweet grabber: ", Grabbernum
 		self.log("[Tweet Grabber] Spawned Tweet Grabber" + str(Grabbernum))
 		api = self.TwiApi
 		cutoff = datetime.datetime(2012, 01, 01)
@@ -214,14 +214,13 @@ class HarvesterClient:
 				statuses = api.get_user_timeline(user_id=ID, count=200, max_id=lastTweetID)
 				self.log2("[Tweet Grabber "+ str(Grabbernum) +"] Just got a stack of statuses of size: " + str(len(statuses)))
 				if len(statuses) is 0:
-					stderrMessage = "[Tweet Grabber "+ str(Grabbernum) +"] Hitting the limit, this ID Grabber is gonna back off for 300 seconds\n"
+					stderrMessage = "[Tweet Grabber "+ str(Grabbernum) +"] Empty status queue is returned by Twitter, Assuming there's no more status in the user's history\n"
 					self.log(stderrMessage)
-					sys.stderr.write(colored(stderrMessage, "green"))
-					gevent.sleep(300)
+					break
 			except twython.TwythonRateLimitError:
 				stderrMessage = "[Tweet Grabber "+ str(Grabbernum) +"] Hitting the limit (Twython returned twitter error), this ID Grabber is gonna back off for 300 seconds\n"
 				self.log(stderrMessage)
-				sys.stderr.write(colored(stderrMessage, "green"))
+				sys.stderr.write(colored(stderrMessage, "blue"))
 				gevent.sleep(300)
 				continue
 			for status in statuses:

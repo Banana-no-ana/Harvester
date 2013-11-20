@@ -34,12 +34,13 @@ class twiAuth:
 		testApi = Twython(self.ck, self.cks, self.at, self.ats) 
 		#Test if the API keys are the developers:
 		if self.ck in 'UmTtg8DMpMXcgzkbIErSQ':
-			print colored("WARNING: You're using the developer's keys. Did you forget to change the keys in the AuthFile?" , 'yellow') 
+			print colored("WARNING: You're using the developer's Twitter API keys. Did you forget to change the keys in the AuthFile?" , 'yellow') 
 		try: 
 			testApi.verify_credentials()
 		except twython.exceptions.TwythonAuthError:
 			print "Twitter authentication failed with the given authenticators. "
 		else:
+			print colored("Twitter Authentication seems to be successful", "green")
 			return testApi
 	
 	def __init__(self):
