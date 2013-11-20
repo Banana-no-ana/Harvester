@@ -21,6 +21,7 @@ import twython
 class HarvesterClient:
 	def log(self, message):
 		self.logger.log(message)
+		self.logger2.log(message)
 		
 	def receiveWelcomeMessage(self, mysocket):
 		socketFileHandle = mysocket.makefile()
@@ -152,7 +153,6 @@ class HarvesterClient:
 		while True:
 			cursor.execute("SELECT * FROM userIDs WHERE NotScanned=0 LIMIT 1")
 			self.log("[DB ID Grabber] Selected 1 rows from the Twitter Users database")
-			self.log2("[DB ID Grabber] Selected 1 rows from the Twitter Users database")
 			row = cursor.fetchone()
 			ID = row[0]
 			self.TweetIDQueue.put(ID, True)
@@ -185,7 +185,8 @@ class HarvesterClient:
 		dbConnection = self.connectToDB()
 		cursor = dbConnection.cursor()
 		self.log2("[Tweet Inserter] Made connection to database, with " + str(dbConnection))
-		while True:
+		insertions = 0
+		while insertions < 300:
 			status = self.TweetGrabbedQueue.get(True)
 			text, UID, TweetID, HashTags, Time = status
 			try:
@@ -197,10 +198,12 @@ class HarvesterClient:
 				self.log2("[Tweet Inserter] Encountered MYSQL Integrity error, Tweet already in database, skipping for now")
 				#If the ID is duplicate, ignore it. 
 				pass
+			insertions = insertions + 1
+		dbConnection.close()					
 		
-	def GrabTweetsByID(self, ID, num):
-		print "In Tweet Grabber", num
-		self.log("[Tweet Grabber] Spawned Tweet Grabber" + str(num))
+	def GrabTweetsByID(self, ID, Grabbernum):
+		print "Spawned a Tweet Grabber: ", Grabbernum
+		self.log("[Tweet Grabber] Spawned Tweet Grabber" + str(Grabbernum))
 		api = self.TwiApi
 		cutoff = datetime.datetime(2012, 01, 01)
 		lastTweetID = 1401925121566576641
@@ -209,14 +212,16 @@ class HarvesterClient:
 		while (realtime > cutoff and numTweets < 3200):
 			try:
 				statuses = api.get_user_timeline(user_id=ID, count=200, max_id=lastTweetID)
-				self.log("Just got a stack of statuses of size: " + str(len(statuses)))
+				self.log2("[Tweet Grabber "+ str(Grabbernum) +"] Just got a stack of statuses of size: " + str(len(statuses)))
 				if len(statuses) is 0:
-					self.log2("Just got an empty stack of statuses from twitter. What's up with that? ")
-					sys.stderr.write("[Tweet Grabber] Hitting the limit, this ID Grabber is gonna back off for 300 seconds\n")
+					stderrMessage = "[Tweet Grabber "+ str(Grabbernum) +"] Hitting the limit, this ID Grabber is gonna back off for 300 seconds\n"
+					self.log(stderrMessage)
+					sys.stderr.write(colored(stderrMessage, "green"))
 					gevent.sleep(300)
 			except twython.TwythonRateLimitError:
-				self.log("[Tweet Grabber] Hitting the limit, this ID Grabber is gonna back off for 300 seconds\n")
-				sys.stderr.write("[Tweet Grabber] Hitting the limit, this ID Grabber is gonna back off for 300 seconds\n")
+				stderrMessage = "[Tweet Grabber "+ str(Grabbernum) +"] Hitting the limit (Twython returned twitter error), this ID Grabber is gonna back off for 300 seconds\n"
+				self.log(stderrMessage)
+				sys.stderr.write(colored(stderrMessage, "green"))
 				gevent.sleep(300)
 				continue
 			for status in statuses:
@@ -226,13 +231,13 @@ class HarvesterClient:
 				HashTags = status[u'entities'][u'hashtags']
 				Time = time.strftime('%Y-%m-%d %H:%M:%S', time.strptime(status[u'created_at'],'%a %b %d %H:%M:%S +0000 %Y'))
 				self.TweetGrabbedQueue.put((text, UID, TweetID, HashTags, Time), True)
-				self.log2("[Tweet Grabber] Grabbed this tweet and adding to the queue: " + str(UID) + " " + str(TweetID)+ " "  + str(Time) + " "  + text)
+				self.log2("[Tweet Grabber "+ str(Grabbernum) +"] Grabbed this tweet and adding to the queue: " + str(UID) + " " + str(TweetID)+ " "  + str(Time))
 				gevent.sleep()
 			realtime = datetime.datetime.strptime(Time, "%Y-%m-%d %H:%M:%S")
 			lastTweetID = UID
 			numTweets = numTweets + 200
 			gevent.sleep()
-		self.log("[Tweet Grabber] Done grabbing tweets from this User: " + str(UID))		
+		self.log("[Tweet Grabber "+ str(Grabbernum) +"] Done grabbing tweets from this User: " + str(UID))		
 	
 	#Block until there's an ID to process on TweetGrabQueue
 	def TweetGrabWorker(self, myNum):
@@ -306,8 +311,9 @@ class HarvesterClient:
 		self.TwiAuth = twiAuth.twiAuth()
 		self.TwiApi = self.TwiAuth.Api
 		self.TweetIDQueue = Queue.Queue(5)
-		self.TweetGrabbedQueue = Queue.Queue(400)
 		self.IDGrabber = Greenlet.spawn(self.GrabIDFromDatabase)
+		
+		self.TweetGrabbedQueue = Queue.Queue(400)
 		self.TweetInsertPool = gevent.pool.Pool(3)
 		self.TweetGrabPool = gevent.pool.Pool(3)
 		Greenlet.spawn(self.spawnTweetInserters)

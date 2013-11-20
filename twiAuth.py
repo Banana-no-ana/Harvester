@@ -32,7 +32,9 @@ class twiAuth:
 		
 	def authCreds(self):
 		testApi = Twython(self.ck, self.cks, self.at, self.ats) 
-		#twitter.Api(consumer_key=self.ck, consumer_secret=self.cks, access_token_key=self.at, access_token_secret=self.ats)
+		#Test if the API keys are the developers:
+		if self.ck in 'UmTtg8DMpMXcgzkbIErSQ':
+			print colored("WARNING: You're using the developer's keys. Did you forget to change the keys in the AuthFile?" , 'yellow') 
 		try: 
 			testApi.verify_credentials()
 		except twython.exceptions.TwythonAuthError:

@@ -35,7 +35,6 @@ class HarvesterServer:
 		socketFile.write('pinging, are you online?')
 		socketFile.flush()
 		socketFile.close()
-		pass
 		
 	def checkClients(self):
 		#TODO: Go through client list and see if they're online
