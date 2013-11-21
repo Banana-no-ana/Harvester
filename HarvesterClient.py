@@ -189,8 +189,8 @@ class HarvesterClient:
 			
 	def TweetInserter(self, InserterID):
 		myName = "[Tweet Inserter " + str(InserterID) +  " ] "
-		msg = myName + "is spawned"
-		print colored(msg, "on_grey")
+		msg = myName + "is spawned \t\t"
+		print colored(("\t" + msg),"white","on_grey")
 		self.log(msg)
 		dbConnection = self.connectToDB()
 		cursor = dbConnection.cursor()
@@ -221,9 +221,9 @@ class HarvesterClient:
 		return 
 	
 	def GrabTweetsByID(self, ID, Grabbernum):
-		myName = "[Tweet Inserter " + str(Grabbernum) +  " ] "
-		msg = myName + "is spawned"
-		print colored(('\t' + msg), "on_grey")
+		myName = "[Tweet Grabber " + str(Grabbernum) +  " ] "
+		msg = myName + "is spawned \t\t"
+		print colored(('\t' + msg), "white", "on_grey")
 		self.log(msg)
 		api = self.TwiApi
 		cutoff = datetime.datetime(2012, 11, 01)
