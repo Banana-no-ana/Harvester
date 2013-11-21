@@ -294,6 +294,7 @@ class HarvesterClient:
 			else:
 				msg = myName + "Module timed out after 1200 seconds. Cleaning up now. "
 				self.log(msg)
+				print colored(msg, "yellow")
 		finally:
 			timeout.cancel()
 			msg = "[Tweet Grabber "+ str(Grabbernum) +"] Done grabbing tweets from this User: " + str(UID) + " and grabbed a total of: " + str(numTweets) + " Tweets."
