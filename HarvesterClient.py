@@ -152,7 +152,7 @@ class HarvesterClient:
 	def GrabIDFromDatabase(self, GrabberID):
 		dbconn = self.connectToDB()
 		cursor = dbconn.cursor()
-		msg = "[DB ID Grabber " + str(GrabberID) + " ] Spawned an ID Grabber to get from database"
+		msg = "[DB ID Grabber " + str(GrabberID) + "] Spawned an ID Grabber to get from database"
 		self.log(msg)
 		cursor.execute("SELECT * FROM userIDs WHERE NotScanned=0 LIMIT 1")
 		self.log2("[DB ID Grabber] Selected 1 rows from the Twitter Users database")
@@ -161,12 +161,12 @@ class HarvesterClient:
 		try:
 			self.TweetIDQueue.put(ID, True, 30)
 		except Queue.Full:
-			self.log("[DB ID Grabber " + str(GrabberID) + " ] ID Queue is Full, waiting for 5 seconds")
+			self.log("[DB ID Grabber " + str(GrabberID) + "] ID Queue is Full, waiting for 5 seconds")
 			dbconn.close()
 			gevent.sleep(5)
 			return
 		cursor.execute("Update userIDs SET NotScanned=1 Where UserID=%s ;", str(ID))
-		self.log2("[DB ID Grabber " + str(GrabberID) + " ] ID grabber (GrabIDFromDatabase) got the userID: " + str(ID) + " Updated that into database now")
+		self.log2("[DB ID Grabber " + str(GrabberID) + "] ID grabber (GrabIDFromDatabase) got the userID: " + str(ID) + " Updated that into database now")
 		dbconn.commit()
 		dbconn.close()
 		#TODO: Set The scanned time to now. 
@@ -188,7 +188,7 @@ class HarvesterClient:
 			dbconn.commit()
 			
 	def TweetInserter(self, InserterID):
-		myName = "[Tweet Inserter " + str(InserterID) +  " ] "
+		myName = "[Tweet Inserter " + str(InserterID) +  "] "
 		msg = myName + "is spawned \t\t"
 		print colored(("\t" + msg),"white","on_grey")
 		self.log(msg)
@@ -251,7 +251,7 @@ class HarvesterClient:
 						self.log2(msg) 
 						gevent.sleep()
 			except twython.TwythonRateLimitError:
-				stderrMessage = "[Tweet Grabber "+ str(Grabbernum) +" ] Hitting the limit (Twython returned twitter error), this ID Grabber is gonna back off for 300 seconds\n"
+				stderrMessage = "[Tweet Grabber "+ str(Grabbernum) +"] Hitting the limit (Twython returned twitter error), this ID Grabber is gonna back off for 300 seconds\n"
 				self.log(stderrMessage)
 				sys.stderr.write(colored(stderrMessage, "blue"))
 				gevent.sleep(300)
@@ -350,7 +350,7 @@ class HarvesterClient:
 		self.TwiAuth = twiAuth.twiAuth()
 		self.TwiApi = self.TwiAuth.Api
 		self.TweetIDQueue = Queue.Queue(6)
-		self.IDGrabberPool = gevent.pool.Pool(2)
+		self.IDGrabberPool = gevent.pool.Pool(3)
 		Greenlet.spawn(self.spawnIDDBGrabbers)	
 		
 		self.TweetGrabbedQueue = Queue.Queue(600)
