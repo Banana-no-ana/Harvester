@@ -17,6 +17,7 @@ import time
 import twiAuth
 import glob
 import twython
+import pdb
 
 class HarvesterClient:
 	def log(self, message):
@@ -146,21 +147,26 @@ class HarvesterClient:
 				pass
 			self.dbConn.commit()
 			
-	def GrabIDFromDatabase(self):
+	def GrabIDFromDatabase(self, GrabberID):
 		dbconn = self.connectToDB()
 		cursor = dbconn.cursor()
-		self.log2("In code ready to grab ID from database")
-		while True:
-			cursor.execute("SELECT * FROM userIDs WHERE NotScanned=0 LIMIT 1")
-			self.log("[DB ID Grabber] Selected 1 rows from the Twitter Users database")
-			row = cursor.fetchone()
-			ID = row[0]
-			self.TweetIDQueue.put(ID, True)
-			cursor.execute("Update userIDs SET NotScanned=1 Where UserID=%s ;", str(ID))
-			self.log2("[DB ID Grabber] ID grabber (GrabIDFromDatabase) got the userID: " + str(ID) + " Updated that into database now")
-			dbconn.commit()			
-			gevent.sleep(2)
-			
+		msg = "[DB ID Grabber " + str(GrabberID) + " ] Spawned an ID Grabber to get from database"
+		self.log(msg)
+		cursor.execute("SELECT * FROM userIDs WHERE NotScanned=0 LIMIT 1")
+		self.log2("[DB ID Grabber] Selected 1 rows from the Twitter Users database")
+		row = cursor.fetchone()
+		ID = row[0]		
+		try:
+			self.TweetIDQueue.put(ID, True, 30)
+		except Queue.Full:
+			self.log("[DB ID Grabber " + str(GrabberID) + " ] ID Queue is Full, waiting for 5 seconds")
+			dbconn.close()
+			gevent.sleep(5)
+			return
+		cursor.execute("Update userIDs SET NotScanned=1 Where UserID=%s ;", str(ID))
+		self.log("[DB ID Grabber " + str(GrabberID) + " ] ID grabber (GrabIDFromDatabase) got the userID: " + str(ID) + " Updated that into database now")
+		dbconn.commit()
+		dbconn.close()
 		#TODO: Set The scanned time to now. 
 	
 	def resetUserDatabase(self):
@@ -180,7 +186,7 @@ class HarvesterClient:
 			dbconn.commit()
 			
 	def TweetInserter(self, InserterID):
-		print "Spawned a tweet inserter ", InserterID
+		print "Spawned a tweet inserter #", InserterID
 		self.log("[Tweet Inserter] Spawned a tweet inserter " + str(InserterID))
 		dbConnection = self.connectToDB()
 		cursor = dbConnection.cursor()
@@ -199,16 +205,20 @@ class HarvesterClient:
 				#If the ID is duplicate, ignore it. 
 				pass
 			insertions = insertions + 1
+		finishMsg = "Tweet Inserter " + str(InserterID) + " has made 300 insertions, shutting down now. "
+		self.log(finishMsg)
+		print colored(finishMsg, "green")
 		dbConnection.close()					
 		
 	def GrabTweetsByID(self, ID, Grabbernum):
-		print "Spawned a Tweet grabber: ", Grabbernum
+		print "Spawned a Tweet grabber: #", Grabbernum
 		self.log("[Tweet Grabber] Spawned Tweet Grabber" + str(Grabbernum))
 		api = self.TwiApi
 		cutoff = datetime.datetime(2012, 01, 01)
 		lastTweetID = 1401925121566576641
 		realtime = datetime.datetime.now()
 		numTweets = 0
+		timesGrabbed = 0
 		while (realtime > cutoff and numTweets < 3200):
 			try:
 				statuses = api.get_user_timeline(user_id=ID, count=200, max_id=lastTweetID)
@@ -231,12 +241,14 @@ class HarvesterClient:
 				Time = time.strftime('%Y-%m-%d %H:%M:%S', time.strptime(status[u'created_at'],'%a %b %d %H:%M:%S +0000 %Y'))
 				self.TweetGrabbedQueue.put((text, UID, TweetID, HashTags, Time), True)
 				self.log2("[Tweet Grabber "+ str(Grabbernum) +"] Grabbed this tweet and adding to the queue: " + str(UID) + " " + str(TweetID)+ " "  + str(Time))
-				gevent.sleep()
 			realtime = datetime.datetime.strptime(Time, "%Y-%m-%d %H:%M:%S")
 			lastTweetID = UID
 			numTweets = numTweets + 200
+			timesGrabbed = timesGrabbed + 1
 			gevent.sleep()
-		self.log("[Tweet Grabber "+ str(Grabbernum) +"] Done grabbing tweets from this User: " + str(UID))		
+		msg = "[Tweet Grabber "+ str(Grabbernum) +"] Done grabbing tweets from this User: " + str(UID) + " and grabbed a total of: " + str(timesGrabbed) + " times."
+		self.log(msg)
+		print colored(msg, "green")		
 	
 	#Block until there's an ID to process on TweetGrabQueue
 	def TweetGrabWorker(self, myNum):
@@ -261,6 +273,18 @@ class HarvesterClient:
 	
 	def log2(self, message):
 		self.logger2.log(message)
+		
+	def spawnIDDBGrabbers(self):
+		msg = "Spawning Grabbers to get IDs from database now"
+		print colored(msg, "green")
+		self.log(msg)
+		IDGrabberNum = 1
+		while True:			
+			if self.TweetIDQueue.full():
+				gevent.sleep(10)
+			else:
+				self.IDGrabberPool.spawn(self.GrabIDFromDatabase, IDGrabberNum)
+				IDGrabberNum = IDGrabberNum + 1
 	
 	def __init__(self, ip):
 		self.peerlist = []
@@ -283,8 +307,7 @@ class HarvesterClient:
 		print "Client attempting to connect to database"
 		self.dbConn = self.connectToDB()
 		self.testDBConn(self.dbConn)
-		### // Database Module
-		
+		### // Database Module		
 		
 		'''
 		### ID Grabbing Module 
@@ -309,15 +332,15 @@ class HarvesterClient:
 		### Tweet Grabber Module
 		self.TwiAuth = twiAuth.twiAuth()
 		self.TwiApi = self.TwiAuth.Api
-		self.TweetIDQueue = Queue.Queue(5)
-		self.IDGrabber = Greenlet.spawn(self.GrabIDFromDatabase)
+		self.TweetIDQueue = Queue.Queue(8)
+		self.IDGrabberPool = gevent.pool.Pool(2)
+		Greenlet.spawn(self.spawnIDDBGrabbers)	
 		
 		self.TweetGrabbedQueue = Queue.Queue(400)
 		self.TweetInsertPool = gevent.pool.Pool(3)
 		self.TweetGrabPool = gevent.pool.Pool(3)
 		Greenlet.spawn(self.spawnTweetInserters)
 		Greenlet.spawn(self.spawnTweetGrabbers)		
-		
 		#self.resetUserDatabase()
 		
 		while True:

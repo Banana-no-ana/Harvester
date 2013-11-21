@@ -7,7 +7,7 @@ from termcolor import colored
 
 class twiAuth:
 	def loadCredentialfile(self):
-		credFile = glob.glob("Auth*")
+		credFile = glob.glob("AuthFil*")
 		if len(credFile) > 1:
 			print colored("ERROR: Why are there more than Auth file in your inventory? Sell that to a merchant.", "yellow")
 			return False
