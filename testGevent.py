@@ -90,14 +90,41 @@ def testDBCapabilities():
 	global dbInsertions
 	print "Ran this many times: ", dbInsertions
 	
+def poolSpawn(myNum):
+	import gevent
+	print "Spawned: ", myNum
+	gevent.sleep(0.5)		
+	
+def testGeventPool():
+	import gevent
+	from gevent import pool
+	myPool = gevent.pool.Pool(3)
+	myNum = 1
+	while True:
+		myPool.spawn(poolSpawn, myNum)
+		myNum = myNum +1
+		if myNum is 30:
+			return
+		
+def testTime():
+	import datetime
+	cutoff = datetime.datetime(2012, 11, 01)
+	realtime = datetime.datetime.now()
+	
+	print "Realtime compare to cutoff", realtime, cutoff
+	print realtime > cutoff
+	print realtime == cutoff
+	print realtime < cutoff
+	
 def main():
 	#testGevent()
 	#testHarvester()
 	#testLogger()
-	testTwitAuth()
+	#testTwitAuth()
 	#testDBConnection()
 	#testDBCapabilities()
-	
+	#testGeventPool()
+	testTime()
 
 
 if __name__ == '__main__':
