@@ -211,7 +211,7 @@ class HarvesterClient:
 					except MySQLdb.IntegrityError:
 						self.log2("[Tweet Inserter] Encountered MYSQL Integrity error, Tweet already in database, skipping for now")
 				except Queue.Empty:
-					message = myName + "Queue empty timeout, temporarily giving up control"
+					message = myName + "Queue empty timeout (probably due to deadlock), temporarily giving up control"
 					gevent.sleep()
 					self.log(message)			
 				
@@ -266,7 +266,7 @@ class HarvesterClient:
 						try:
 							self.TweetGrabbedQueue.put((text, UID, TweetID, HashTags, Time), True, 10)
 						except Queue.Full:
-							msg = "[Tweet Grabber "+ str(Grabbernum) +"] just hit 10 second timeout, context switching the greenlet for now"
+							msg = "[Tweet Grabber "+ str(Grabbernum) +"] just hit 10 second queue full timeout (probably due to deadlock), yielding cycles for now"
 							self.log2(msg) 
 							gevent.sleep()
 				except twython.TwythonRateLimitError, twython.TwythonError:
@@ -343,16 +343,16 @@ class HarvesterClient:
 			msg = "[Montior] The pool thinks there are " + str(self.IDGrabberPool.free_count()) + " ID grabber slots, working on a current queue size of: " + str(self.TweetIDQueue.qsize()) + " out of :" + str(self.TweetIDQueue.maxsize)
 			self.log(msg)
 			for greenlet in self.IDGrabberPool:
-				msg = "[Monitor] Currently alive ID Grabber: " + str(greenlet)
+				msg = "[Monitor] Currently alive ID Grabber: " + str(greenlet.args)
 				self.log2(msg)
 			
 			msg = "[Montior] The pool thinks there are " + str(self.TweetGrabPool.free_count()) + " available Tweet Grabber slots, and " + str(self.TweetInsertPool.free_count()) + " available Tweet Inserters slots on a current queue size of: " + str(self.TweetGrabbedQueue.qsize())
 			self.log(msg)
 			for greenlet in self.TweetGrabPool:
-				msg = "[Monitor] Currently alive Tweet Grabber: " + str(greenlet)
+				msg = "[Monitor] Currently alive Tweet Grabber: " + str(greenlet.args)
 				self.log2(msg)
 			for greenlet in self.TweetInsertPool:
-				msg = "[Monitor] Currently alive Tweet Inserter: " + str(greenlet)
+				msg = "[Monitor] Currently alive Tweet Inserter: " + str(greenlet.args)
 				self.log2(msg)
 				
 	def printCurrentTime(self):
