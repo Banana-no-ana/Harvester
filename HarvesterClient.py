@@ -188,6 +188,8 @@ class HarvesterClient:
 			dbconn.commit()
 			
 	def TweetInserter(self, InserterID):
+		timeout = gevent.Timeout(600)
+		timeout.start()
 		myName = "[Tweet Inserter " + str(InserterID) +  "] "
 		msg = myName + "is spawned \t\t"
 		print colored(("\t" + msg),"white","on_grey")
@@ -221,6 +223,8 @@ class HarvesterClient:
 		return 
 	
 	def GrabTweetsByID(self, ID, Grabbernum):
+		timeout = gevent.Timeout(1200)
+		timeout.start()
 		myName = "[Tweet Grabber " + str(Grabbernum) +  "] "
 		msg = myName + "is spawned \t\t"
 		print colored(('\t' + msg), "white", "on_grey")
@@ -302,6 +306,27 @@ class HarvesterClient:
 			else:
 				self.IDGrabberPool.spawn(self.GrabIDFromDatabase, IDGrabberNum)
 				IDGrabberNum = IDGrabberNum + 1
+	
+	def MonitorThread(self):
+		#Monitors the varies pools and Queues make them print their own statuses into the log files.
+		#If something is running for more than 20 minutes, kill it. 
+		
+		while True:
+			gevent.sleep(10)
+			msg = "[Montior] The pool thinks there are " + str(self.IDGrabberPool.free_count()) + " many ID grabber slots, working on a current queue size of: " + str(self.TweetIDQueue.qsize())
+			self.log(msg)
+			for greenlet in self.IDGrabberPool:
+				msg = "[Monitor] Currently alive ID Grabber: " + str(greenlet)
+				self.log2(msg)
+			
+			msg = "[Montior] The pool thinks there are " + str(self.TweetGrabPool.free_count()) + " many available Tweet Grabber slots, and " + str(self.TweetInsertPool.free_count()) + " many available Tweet Inserters slots on a current queue size of: " + str(self.TweetGrabbedQueue.qsize())
+			self.log(msg)
+			for greenlet in self.TweetGrabPool:
+				msg = "[Monitor] Currently alive Tweet Grabber: " + str(greenlet)
+				self.log2(msg)
+			for greenlet in self.TweetInsertPool:
+				msg = "[Monitor] Currently alive Tweet Inserter: " + str(greenlet)
+				self.log2(msg)
 		
 	def __init__(self, ip):
 		self.peerlist = []
@@ -359,6 +384,8 @@ class HarvesterClient:
 		Greenlet.spawn(self.spawnTweetInserters)
 		Greenlet.spawn(self.spawnTweetGrabbers)		
 		#self.resetUserDatabase()
+		
+		Greenlet.spawn(self.MonitorThread)
 
 		while True:
 			gevent.sleep(10)
