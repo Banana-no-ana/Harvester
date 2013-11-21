@@ -188,9 +188,10 @@ class HarvesterClient:
 			dbconn.commit()
 			
 	def TweetInserter(self, InserterID):
-		print "\tSpawned a Tweet inserter #", InserterID
 		myName = "[Tweet Inserter " + str(InserterID) +  " ] "
-		self.log(myName + "is spawnned")
+		msg = myName + "is spawned"
+		print colored(msg, "on_grey")
+		self.log(msg)
 		dbConnection = self.connectToDB()
 		cursor = dbConnection.cursor()
 		self.log2(myName + "Made connection to database, with " + str(dbConnection))
@@ -220,8 +221,10 @@ class HarvesterClient:
 		return 
 	
 	def GrabTweetsByID(self, ID, Grabbernum):
-		print "\tSpawned a Tweet grabber: #", Grabbernum
-		self.log("[Tweet Grabber] Spawned Tweet Grabber" + str(Grabbernum))
+		myName = "[Tweet Inserter " + str(Grabbernum) +  " ] "
+		msg = myName + "is spawned"
+		print colored(('\t' + msg), "on_grey")
+		self.log(msg)
 		api = self.TwiApi
 		cutoff = datetime.datetime(2012, 11, 01)
 		lastTweetID = 1401925121566576641
