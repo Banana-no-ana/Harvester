@@ -221,7 +221,7 @@ class HarvesterClient:
 		return 
 	
 	def GrabTweetsByID(self, ID, Grabbernum):
-		myName = "[Tweet Grabber " + str(Grabbernum) +  " ] "
+		myName = "[Tweet Grabber " + str(Grabbernum) +  "] "
 		msg = myName + "is spawned \t\t"
 		print colored(('\t' + msg), "white", "on_grey")
 		self.log(msg)
