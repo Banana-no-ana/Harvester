@@ -344,16 +344,26 @@ class HarvesterClient:
 			msg = "[Montior] The pool thinks there are " + str(self.IDGrabberPool.free_count()) + " ID grabber slots, working on a current queue size of: " + str(self.TweetIDQueue.qsize()) + " out of :" + str(self.TweetIDQueue.maxsize)
 			self.log(msg)
 			for greenlet in self.IDGrabberPool:
-				msg = "[Monitor] Currently alive ID Grabber: " + str(greenlet.args)
+				msg = "[Monitor] Currently alive ID Grabber: " + str(greenlet)
+				if "kwargs" in dir(greenlet):
+					msg = "[Monitor] Currently alive ID Grabber: " + str(greenlet.kwargs)
+				elif "args" in dir(greenlet):
+					msg = "[Monitor] Currently alive ID Grabber: " + str(greenlet.args)
 				self.log2(msg)
 			
 			msg = "[Montior] The pool thinks there are " + str(self.TweetGrabPool.free_count()) + " available Tweet Grabber slots, and " + str(self.TweetInsertPool.free_count()) + " available Tweet Inserters slots on a current queue size of: " + str(self.TweetGrabbedQueue.qsize())
 			self.log(msg)
 			for greenlet in self.TweetGrabPool:
-				msg = "[Monitor] Currently alive Tweet Grabber: " + str(greenlet.args)
+				if "args" in dir(greenlet):
+					msg = "[Monitor] Currently alive Tweet Grabber: " + str(greenlet.args)
+				else:
+					msg = "[Monitor] Currently alive Tweet Grabber: " + str(greenlet)
 				self.log2(msg)
 			for greenlet in self.TweetInsertPool:
-				msg = "[Monitor] Currently alive Tweet Inserter: " + str(greenlet.args)
+				if "args" in dir(greenlet):
+					msg = "[Monitor] Currently alive Tweet Inserter: " + str(greenlet.args)
+				else:
+					msg = "[Monitor] Currently alive Tweet Inserter: " + str(greenlet)
 				self.log2(msg)
 				
 	def printCurrentTime(self):
