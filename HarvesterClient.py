@@ -269,17 +269,17 @@ class HarvesterClient:
 							msg = "[Tweet Grabber "+ str(Grabbernum) +"] just hit 10 second queue full timeout (probably due to deadlock), yielding cycles for now"
 							self.log2(msg) 
 							gevent.sleep()
-				except twython.TwythonRateLimitError, twython.TwythonError:
-					if twython.TwythonRateLimitError:
+				except (twython.TwythonRateLimitError, twython.TwythonError) as e:
+					if twython.TwythonRateLimitError in e:
 						stderrMessage = "[Tweet Grabber "+ str(Grabbernum) +"] Hitting the limit (Twython returned twitter error), this ID Grabber is gonna back off for 300 seconds\n"
 						self.log(stderrMessage)
 						sys.stderr.write(colored(stderrMessage, "blue"))
 						gevent.sleep(300)
 						continue
-					if twython.TwythonError:
+					if twython.TwythonError in e:
 						stderrMessage = myName + "just hit the SSL error. Backing off for 3 seconds to see if it comes back"
 						self.log(stderrMessage)
-						print colored(stderrMessage, "blue")
+						print colored(stderrMessage, "yellow", "on_gray")
 						gevent.sleep(3)
 				gevent.sleep()
 				realtime = datetime.datetime.strptime(Time, "%Y-%m-%d %H:%M:%S")
