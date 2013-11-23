@@ -271,7 +271,7 @@ class HarvesterClient:
 							self.log2(msg) 
 							gevent.sleep()
 				except (twython.TwythonRateLimitError, twython.TwythonError) as e:
-					#print colored(str(e), "yellow")
+					print colored(str(e), "yellow")
 					if twython.TwythonRateLimitError in e:
 						stderrMessage = "[Tweet Grabber "+ str(Grabbernum) +"] Hitting the limit (Twython returned twitter error), this ID Grabber is gonna back off for 300 seconds\n"
 						self.log(stderrMessage)
@@ -281,7 +281,7 @@ class HarvesterClient:
 					if twython.TwythonError in e:
 						stderrMessage = myName + "just hit the SSL error. Backing off for 3 seconds to see if it comes back"
 						self.log(stderrMessage)
-						print colored(stderrMessage, "blue")
+						print colored(stderrMessage, "yellow", "on_gray")
 						gevent.sleep(3)
 				gevent.sleep()
 				try: 
