@@ -2,6 +2,7 @@
 ## THis is the client portion of the harvester
 import sys
 import HarvesterLog
+import HarvesterIDGrabber
 from gevent import monkey
 from gevent import Greenlet
 monkey.patch_all()
@@ -127,15 +128,33 @@ class HarvesterClient:
 					mycount = 0
 					dbconn.commit()
 	
+	def parseStatus(self, status):
+		text = status[u'text'].encode('UTF-8')
+		TweetID = status[u'id']
+		HashTags = status[u'entities'][u'hashtags']
+		Time = time.strftime('%Y-%m-%d %H:%M:%S', time.strptime(status[u'created_at'],'%a %b %d %H:%M:%S +0000 %Y'))
+		print status
+		
+	
 	def grabIDs(self):
 		#TODO: automatically grab IDs given a particular location
 		#Right now only takes IDs from a file
 		#put IDs grabbed into self.IDqueue
-		#3 sample IDs:496655421, 14601890, 194357523
+		#Since ID: Starting with 253018723156381696, which is an ID in 2012-10-02
 		
-		samples = [496655421, 14601890, 194357523]
 		time = datetime.datetime.now()
 		geo = "49.168236527256,-122.857360839844,50km"
+		sinceID = 253018723156381696
+		myGrabber = HarvesterIDGrabber.HarvesterIDGrabber(geo)
+		statuses = myGrabber.grab(sinceID)
+		
+		for status in statuses:
+			UID, tweetID, text, HashTags, Time = self.parseStatus(status)
+			#STick this in the usual table
+			#Put that UserID onto the stack
+			#Stick the tweet into the collected tweet. Give it a weight. 
+			
+		
 		for ID in samples:
 			self.IDqueue.put((ID, time, geo))
 	
