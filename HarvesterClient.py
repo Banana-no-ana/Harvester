@@ -248,6 +248,7 @@ class HarvesterClient:
 			api = self.TwiApi
 			cutoff = datetime.datetime(2012, 11, 01)
 			lastTweetID = 1401925121566576641
+			Time = time.strftime("11 Nov 13", "%d, %b, %y") ## This line works but makes no sense. I have no clue why it's working. 
 			realtime = datetime.datetime.now()
 			numTweets = 0
 			while (realtime > cutoff and numTweets < 3200):
@@ -269,20 +270,25 @@ class HarvesterClient:
 							msg = "[Tweet Grabber "+ str(Grabbernum) +"] just hit 10 second queue full timeout (probably due to deadlock), yielding cycles for now"
 							self.log2(msg) 
 							gevent.sleep()
-				except twython.TwythonRateLimitError, twython.TwythonError:
-					if twython.TwythonRateLimitError:
+				except (twython.TwythonRateLimitError, twython.TwythonError) as e:
+					#print colored(str(e), "yellow")
+					if twython.TwythonRateLimitError in e:
 						stderrMessage = "[Tweet Grabber "+ str(Grabbernum) +"] Hitting the limit (Twython returned twitter error), this ID Grabber is gonna back off for 300 seconds\n"
 						self.log(stderrMessage)
 						sys.stderr.write(colored(stderrMessage, "blue"))
 						gevent.sleep(300)
 						continue
-					if twython.TwythonError:
+					if twython.TwythonError in e:
 						stderrMessage = myName + "just hit the SSL error. Backing off for 3 seconds to see if it comes back"
 						self.log(stderrMessage)
 						print colored(stderrMessage, "blue")
 						gevent.sleep(3)
 				gevent.sleep()
-				realtime = datetime.datetime.strptime(Time, "%Y-%m-%d %H:%M:%S")
+				try: 
+					realtime = datetime.datetime.strptime(Time, "%Y-%m-%d %H:%M:%S")
+				except UnboundLocalError as e:
+					self.log("Unobund local error from using realtime, even though it's defined at the top of the method")
+					print colored(str(e), "yellow")
 				lastTweetID = TweetID -1
 				numTweets = numTweets + len(statuses)
 				msg =  "[Tweet Grabber "+ str(Grabbernum) +"] "+ str(numTweets) + " numTweets so far, for USERID: " + str(UID)
