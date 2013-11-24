@@ -248,7 +248,8 @@ class HarvesterClient:
 			api = self.TwiApi
 			cutoff = datetime.datetime(2012, 11, 01)
 			lastTweetID = 1401925121566576641
-			realtime = datetime.datetime.now()
+			Time = datetime.datetime.now()
+			realtime = datetime.datetime.strptime(Time, "%Y-%m-%d %H:%M:%S")
 			numTweets = 0
 			while (realtime > cutoff and numTweets < 3200):
 				try:
