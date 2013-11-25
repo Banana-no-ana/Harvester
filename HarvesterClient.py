@@ -129,11 +129,13 @@ class HarvesterClient:
 					dbconn.commit()
 	
 	def parseStatus(self, status):
+		print status
 		text = status[u'text'].encode('UTF-8')
+		UID = status[u'user'][u'id']
 		TweetID = status[u'id']
 		HashTags = status[u'entities'][u'hashtags']
 		Time = time.strftime('%Y-%m-%d %H:%M:%S', time.strptime(status[u'created_at'],'%a %b %d %H:%M:%S +0000 %Y'))
-		print status
+		return UID, TweetID, text, HashTags, Time
 		
 	
 	def grabIDs(self):
@@ -146,30 +148,59 @@ class HarvesterClient:
 		geo = "49.168236527256,-122.857360839844,50km"
 		sinceID = 253018723156381696
 		myGrabber = HarvesterIDGrabber.HarvesterIDGrabber(geo)
-		statuses = myGrabber.grab(sinceID)
+		statuses = myGrabber.grabOneSet(sinceID)
+		priority = 3
 		
+		print statuses
 		for status in statuses:
 			UID, tweetID, text, HashTags, Time = self.parseStatus(status)
+			self.IDQueue.put((UID, tweetID, text, HashTags, Time, priority))
+			self.TweetGrabbedQueue.put(status)
+		gevent.sleep(200)
 			#STick this in the usual table
+			#Table UserID for the current table
+			#Table UserID2 
 			#Put that UserID onto the stack
 			#Stick the tweet into the collected tweet. Give it a weight. 
-			
 		
-		for ID in samples:
-			self.IDqueue.put((ID, time, geo))
-	
-	def putIDs(self):
+	#===========================================================================
+	# 	for ID in samples:
+	# 		self.IDqueue.put((ID, time, geo))
+	# 
+	#===========================================================================
+	def IDPutter(self, PutterID):
 		#TODO: take ID from self.IDqueueu
 		#GeoCode: 49.168236527256,-122.857360839844,50km
-		while True:
-			ID, time, geo =  self.IDqueue.get(True)
-			dbcursor = self.dbConn.cursor()
+		myName = "[ID Putter " + str(PutterID) + "] "
+		msg = myName + "Has spawned"
+		print colored(msg, "green")
+		self.log(msg)
+		numPutted = 0
+		
+		dbconn = self.connectToDB()
+		dbcursor = dbconn.cursor()
+		while numPutted < 300:
+			status =  self.IDqueue.get(True)
+			UID, tweetID, text, HashTags, Time, priority = status			
 			try:
-				dbcursor.execute("INSERT INTO userIDs(UserID, DateAdded, Location) VALUES(%s, %s, %s)", (str(ID), time, geo))
+				print UID, tweetID, text, HashTags, Time, priority 
+				#dbcursor.execute("INSERT INTO userIDs(UserID, DateAdded, Location) VALUES(%s, %s, %s)", (str(ID), time, geo))
 			except MySQLdb.IntegrityError:
 				#If the ID is duplicate, ignore it. 
 				pass
 			self.dbConn.commit()
+			
+		msg = myName + " has made " +str(numPutted) + " insertions, shutting down now. "
+		self.log(msg)
+		print colored(msg, "green")
+			
+	def spawnIDPutters(self):
+		PutterID = 1
+		while True:
+			self.IDputterPool.spawn(self.IDPutter, PutterID)
+			PutterID = PutterID + 1
+			gevent.sleep(1)			
+		
 			
 	def GrabIDFromDatabase(self, GrabberID):
 		dbconn = self.connectToDB()
@@ -224,7 +255,7 @@ class HarvesterClient:
 			while insertions < 300:
 				try:
 					status = self.TweetGrabbedQueue.get(True, 10)
-					text, UID, TweetID, HashTags, Time = status
+					text, UID, TweetID, HashTags, Time, Priority = status
 					try:
 						cursor.execute("INSERT INTO testTweets(UserID, TweetID, Text, Time, HashTags) VALUES(%s, %s, %s, %s, %s)", (str(UID), str(TweetID), text, Time, str(HashTags)))
 					except MySQLdb.IntegrityError:
@@ -283,8 +314,9 @@ class HarvesterClient:
 						TweetID = status[u'id']
 						HashTags = status[u'entities'][u'hashtags']
 						Time = time.strftime('%Y-%m-%d %H:%M:%S', time.strptime(status[u'created_at'],'%a %b %d %H:%M:%S +0000 %Y'))
+						priority = 1
 						try:
-							self.TweetGrabbedQueue.put((text, UID, TweetID, HashTags, Time), True, 10)
+							self.TweetGrabbedQueue.put((text, UID, TweetID, HashTags, Time, priority), True, 10)
 						except Queue.Full:
 							msg = "[Tweet Grabber "+ str(Grabbernum) +"] just hit 10 second queue full timeout (probably due to deadlock), yielding cycles for now"
 							self.log2(msg) 
@@ -402,6 +434,9 @@ class HarvesterClient:
 		self.numAPICalls = 0
 		self.printCurrentTime()
 		
+		#Twitter Auth Stuff
+		self.TwiAuth = twiAuth.twiAuth()
+		self.TwiApi = self.TwiAuth.Api
 		'''
 		### Server module
 		print "In client mode, attempting to connect to ", ip
@@ -419,14 +454,15 @@ class HarvesterClient:
 		self.testDBConn(self.dbConn)
 		### // Database Module		
 		
-		'''
+		
 		### ID Grabbing Module 
 		print "Starting ID grabbing module"
-		self.IDqueue = Queue.Queue()
+		self.IDqueue = Queue.Queue(400)
 		self.IDGrabber = Greenlet.spawn(self.grabIDs)
-		self.IDputter = Greenlet.spawn(self.putIDs)
+		self.IDputterPool = gevent.pool.Pool(1)
+		Greenlet.spawn(self.spawnIDPutters)
 		### // ID grabbing module
-		'''
+		
 				
 		### Input ID from Folder Module
 		#self.IDFolderGrabber = Greenlet.spawn(self.FolderGrabber)
@@ -440,20 +476,24 @@ class HarvesterClient:
 		'''
 		
 		### Tweet Grabber Module
-		self.TwiAuth = twiAuth.twiAuth()
-		self.TwiApi = self.TwiAuth.Api
 		self.TweetIDQueue = Queue.Queue(6)
-		self.IDGrabberPool = gevent.pool.Pool(3)
-		Greenlet.spawn(self.spawnIDDBGrabbers)	
+		#=======================================================================
+		# self.IDGrabberPool = gevent.pool.Pool(3)
+		# Greenlet.spawn(self.spawnIDDBGrabbers)	
+		#=======================================================================
 		
 		self.TweetGrabbedQueue = Queue.Queue(600)
-		self.TweetInsertPool = gevent.pool.Pool(4)
-		self.TweetGrabPool = gevent.pool.Pool(3)
-		Greenlet.spawn(self.spawnTweetInserters)
-		Greenlet.spawn(self.spawnTweetGrabbers)		
-		#self.resetUserDatabase()
+		#=======================================================================
+		# self.TweetInsertPool = gevent.pool.Pool(4)
+		# self.TweetGrabPool = gevent.pool.Pool(3)
+		# Greenlet.spawn(self.spawnTweetInserters)
+		# Greenlet.spawn(self.spawnTweetGrabbers)		
+		#=======================================================================
+		#self.resetUserDatabase()		
 		
+		### Monitor Module
 		Greenlet.spawn(self.MonitorThread)
+		### //Monitor Module
 
 		while True:
 			gevent.sleep(10)
