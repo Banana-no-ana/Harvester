@@ -301,13 +301,13 @@ class HarvesterClient:
 				msg = myName + "Module timed out after 1200 seconds. Cleaning up now. "
 				self.log(msg)
 				print colored(msg, "yellow")
-		finally:
-			timeout.cancel()
-			msg = "[Tweet Grabber "+ str(Grabbernum) +"] Done grabbing tweets from this User: " + str(UID) + " and grabbed a total of: " + str(numTweets) + " Tweets."
-			self.log(msg)
-			print colored(msg, "green")
-			msg = "[Tweet Grabber "+ str(Grabbernum) +"] There are " + str(self.TweetGrabbedQueue.qsize()) + " still left in the Tweet Grabbed Queue"
-			self.log(msg)
+	
+		timeout.cancel()
+		msg = "[Tweet Grabber "+ str(Grabbernum) +"] Done grabbing tweets from this User: " + str(UID) + " and grabbed a total of: " + str(numTweets) + " Tweets."
+		self.log(msg)
+		print colored(msg, "green")
+		msg = "[Tweet Grabber "+ str(Grabbernum) +"] There are " + str(self.TweetGrabbedQueue.qsize()) + " still left in the Tweet Grabbed Queue"
+		self.log(msg)
 		return 
 	
 	#Block until there's an ID to process on TweetGrabQueue
