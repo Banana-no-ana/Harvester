@@ -302,7 +302,7 @@ class HarvesterClient:
 			api = self.TwiApi
 			cutoff = datetime.datetime(2012, 11, 01)
 			lastTweetID = 1401925121566576641
-			Time = time.strftime("11 Nov 13", "%d, %b, %y") ## This line works but makes no sense. I have no clue why it's working. 
+			Time = time.strptime("11 Nov 13", "%d %b %y") ## This line works but makes no sense. I have no clue why it's working. 
 			realtime = datetime.datetime.now()
 			numTweets = 0
 			while (realtime > cutoff and numTweets < 3200):
@@ -333,21 +333,24 @@ class HarvesterClient:
 						sys.stderr.write(colored(stderrMessage, "blue"))
 						gevent.sleep(300)
 						continue
-					if twython.TwythonError in e:
+					elif twython.TwythonError in e:
 						stderrMessage = myName + "just hit the SSL error. Backing off for 3 seconds to see if it comes back"
 						self.log(stderrMessage)
 						print colored(stderrMessage, "yellow", "on_gray")
 						gevent.sleep(3)
-				gevent.sleep()
-				try: 
-					realtime = datetime.datetime.strptime(Time, "%Y-%m-%d %H:%M:%S")
-				except UnboundLocalError as e:
-					self.log("Unobund local error from using realtime, even though it's defined at the top of the method")
-					print colored(str(e), "yellow")
-				lastTweetID = TweetID -1
-				numTweets = numTweets + len(statuses)
-				msg =  "[Tweet Grabber "+ str(Grabbernum) +"] "+ str(numTweets) + " numTweets so far, for USERID: " + str(UID)
-				self.log2(msg)			
+					else:
+						print colored(str(e), "yellow")
+				else:					
+					gevent.sleep()
+					try: 
+						realtime = datetime.datetime.strptime(Time, "%Y-%m-%d %H:%M:%S")
+					except UnboundLocalError as e:
+						self.log("Unobund local error from using realtime, even though it's defined at the top of the method")
+						print colored(str(e), "yellow")
+					lastTweetID = TweetID -1
+					numTweets = numTweets + len(statuses)
+					msg =  "[Tweet Grabber "+ str(Grabbernum) +"] "+ str(numTweets) + " numTweets so far, for USERID: " + str(UID)
+					self.log2(msg)			
 		except gevent.Timeout, t:
 			if t is not gevent.Timeout:
 				msg = myName + "Errored not with a timeout, this is the error message: " + str(t)
@@ -356,13 +359,13 @@ class HarvesterClient:
 				msg = myName + "Module timed out after 1200 seconds. Cleaning up now. "
 				self.log(msg)
 				print colored(msg, "yellow")
-		finally:
-			timeout.cancel()
-			msg = "[Tweet Grabber "+ str(Grabbernum) +"] Done grabbing tweets from this User: " + str(UID) + " and grabbed a total of: " + str(numTweets) + " Tweets."
-			self.log(msg)
-			print colored(msg, "green")
-			msg = "[Tweet Grabber "+ str(Grabbernum) +"] There are " + str(self.TweetGrabbedQueue.qsize()) + " still left in the Tweet Grabbed Queue"
-			self.log(msg)
+	
+		timeout.cancel()
+		msg = "[Tweet Grabber "+ str(Grabbernum) +"] Done grabbing tweets from this User: " + str(UID) + " and grabbed a total of: " + str(numTweets) + " Tweets."
+		self.log(msg)
+		print colored(msg, "green")
+		msg = "[Tweet Grabber "+ str(Grabbernum) +"] There are " + str(self.TweetGrabbedQueue.qsize()) + " still left in the Tweet Grabbed Queue"
+		self.log(msg)
 		return 
 	
 	#Block until there's an ID to process on TweetGrabQueue

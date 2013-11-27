@@ -9,7 +9,7 @@ import tweetpony
 
 class twiAuth:
 	def loadCredentialfile(self):
-		credFile = glob.glob("AuthFil*")
+		credFile = glob.glob("AuthFile")
 		if len(credFile) > 1:
 			print colored("ERROR: Why are there more than Auth file in your inventory? Sell that to a merchant.", "yellow")
 			return False
@@ -20,7 +20,9 @@ class twiAuth:
 			
 	def parseCredFile(self):
 		for line in self.mycredFile:
-			myType, cred = line.split('\t')
+			myline = line.split('\t')
+			myType = myline[0]
+			cred = myline[-1]
 			myType = myType.rstrip()
 			cred = cred.rstrip()
 			if myType == "Consumer_key":
