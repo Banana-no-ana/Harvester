@@ -140,7 +140,7 @@ class HarvesterClient:
 		IDgrabbernum = 1
 		print colored("Spawning Tweet Grabbers based on location for ID harvesting")
 		while True:
-			self.TweetInsertPool.spawn(self.grabIDs, IDgrabbernum)
+			gevent.spawn(self.grabIDs, IDgrabbernum)
 			IDgrabbernum = IDgrabbernum + 1
 			gevent.sleep(120)	
 		
@@ -155,16 +155,16 @@ class HarvesterClient:
 		
 		time = datetime.datetime.now()
 		geo = "49.168236527256,-122.857360839844,50km"
-		sinceID = 253018723156381696
+		sinceID = self.lastIDGrabbed
 		myGrabber = HarvesterIDGrabber.HarvesterIDGrabber(geo, sinceID)
 		statuses = myGrabber.grabOneSet()
 		priority = 3
 
-		print statuses
 		for status in statuses:
 			UID, tweetID, text, HashTags, Time = self.parseStatus(status)
 			self.IDQueue.put((UID, tweetID, text, HashTags, Time, priority))
 			self.TweetGrabbedQueue.put((UID, tweetID, text, HashTags, Time, priority))
+		self.lastIDGrabbed = tweetID
 		gevent.sleep(200)
 			#STick this in the usual table
 			#Table UserID for the current table
@@ -462,7 +462,7 @@ class HarvesterClient:
 		### ID Grabbing Module 
 		print colored("Starting ID grabbing module", "green")
 		self.IDqueue = Queue.Queue(400)
-		self.IDGrabber = Greenlet.spawn(self.grabIDs)
+		self.IDGrabber = Greenlet.spawn(self.grabIDSpawners)
 		self.lastIDGrabbed = 253018723156381696
 		self.IDputterPool = gevent.pool.Pool(1)
 		Greenlet.spawn(self.spawnIDPutters)

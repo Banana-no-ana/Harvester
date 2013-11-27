@@ -34,6 +34,5 @@ class HarvesterIDGrabber(object):
         self.location = location
         self.TwiAuth = twiAuth.twiAuth("TweetPony")
         self.API = self.TwiAuth.Api
-        self.testGrabbing()
         self.lastID = lastID
         
