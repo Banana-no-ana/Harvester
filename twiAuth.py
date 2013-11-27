@@ -18,7 +18,9 @@ class twiAuth:
 			
 	def parseCredFile(self):
 		for line in self.mycredFile:
-			myType, cred = line.split('\t')
+			myline = line.split('\t')
+			myType = myline[0]
+			cred = myline[-1]
 			myType = myType.rstrip()
 			cred = cred.rstrip()
 			if myType == "Consumer_key":
