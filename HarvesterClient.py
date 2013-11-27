@@ -248,7 +248,7 @@ class HarvesterClient:
 			api = self.TwiApi
 			cutoff = datetime.datetime(2012, 11, 01)
 			lastTweetID = 1401925121566576641
-			#Time = time.strftime("11 Nov 13", "%d, %b, %y") ## This line works but makes no sense. I have no clue why it's working. 
+			Time = time.strptime("11 Nov 13", "%d %b %y") ## This line works but makes no sense. I have no clue why it's working. 
 			realtime = datetime.datetime.now()
 			numTweets = 0
 			while (realtime > cutoff and numTweets < 3200):
