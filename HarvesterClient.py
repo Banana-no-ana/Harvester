@@ -271,28 +271,31 @@ class HarvesterClient:
 							self.log2(msg) 
 							gevent.sleep()
 				except (twython.TwythonRateLimitError, twython.TwythonError) as e:
-					#print colored(str(e), "yellow")
+					print colored(str(e), "yellow")
 					if twython.TwythonRateLimitError in e:
 						stderrMessage = "[Tweet Grabber "+ str(Grabbernum) +"] Hitting the limit (Twython returned twitter error), this ID Grabber is gonna back off for 300 seconds\n"
 						self.log(stderrMessage)
 						sys.stderr.write(colored(stderrMessage, "blue"))
 						gevent.sleep(300)
 						continue
-					if twython.TwythonError in e:
+					elif twython.TwythonError in e:
 						stderrMessage = myName + "just hit the SSL error. Backing off for 3 seconds to see if it comes back"
 						self.log(stderrMessage)
 						print colored(stderrMessage, "blue")
 						gevent.sleep(3)
-				gevent.sleep()
-				try: 
-					realtime = datetime.datetime.strptime(Time, "%Y-%m-%d %H:%M:%S")
-				except UnboundLocalError as e:
-					self.log("Unobund local error from using realtime, even though it's defined at the top of the method")
-					print colored(str(e), "yellow")
-				lastTweetID = TweetID -1
-				numTweets = numTweets + len(statuses)
-				msg =  "[Tweet Grabber "+ str(Grabbernum) +"] "+ str(numTweets) + " numTweets so far, for USERID: " + str(UID)
-				self.log2(msg)			
+					else:
+						print colored(str(e), "yellow")
+				else:					
+					gevent.sleep()
+					try: 
+						realtime = datetime.datetime.strptime(Time, "%Y-%m-%d %H:%M:%S")
+					except UnboundLocalError as e:
+						self.log("Unobund local error from using realtime, even though it's defined at the top of the method")
+						print colored(str(e), "yellow")
+					lastTweetID = TweetID -1
+					numTweets = numTweets + len(statuses)
+					msg =  "[Tweet Grabber "+ str(Grabbernum) +"] "+ str(numTweets) + " numTweets so far, for USERID: " + str(UID)
+					self.log2(msg)			
 		except gevent.Timeout, t:
 			if t is not gevent.Timeout:
 				msg = myName + "Errored not with a timeout, this is the error message: " + str(t)
