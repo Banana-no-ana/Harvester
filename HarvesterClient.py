@@ -7,8 +7,8 @@ from gevent import monkey
 from gevent import Greenlet
 monkey.patch_all()
 from gevent import socket
-import gevent
 from gevent import pool
+import gevent
 import pickle
 from termcolor import colored
 import MySQLdb
@@ -18,7 +18,6 @@ import time
 import twiAuth
 import glob
 import twython
-import pdb
 
 class HarvesterClient:
 	def log(self, message):
@@ -137,37 +136,41 @@ class HarvesterClient:
 		Time = time.strftime('%Y-%m-%d %H:%M:%S', time.strptime(status[u'created_at'],'%a %b %d %H:%M:%S +0000 %Y'))
 		return UID, TweetID, text, HashTags, Time
 		
+	def grabIDSpawners(self):
+		IDgrabbernum = 1
+		print colored("Spawning Tweet Grabbers based on location for ID harvesting")
+		while True:
+			self.TweetInsertPool.spawn(self.grabIDs, IDgrabbernum)
+			IDgrabbernum = IDgrabbernum + 1
+			gevent.sleep(120)	
+		
 	
-	def grabIDs(self):
+	def grabIDs(self, grabIDnum):
 		#TODO: automatically grab IDs given a particular location
 		#Right now only takes IDs from a file
 		#put IDs grabbed into self.IDqueue
 		#Since ID: Starting with 253018723156381696, which is an ID in 2012-10-02
+		myname = "[Location-Based Tweet Grabber " + str(grabIDnum) + "] "
+		self.log(myname)
 		
 		time = datetime.datetime.now()
 		geo = "49.168236527256,-122.857360839844,50km"
 		sinceID = 253018723156381696
-		myGrabber = HarvesterIDGrabber.HarvesterIDGrabber(geo)
-		statuses = myGrabber.grabOneSet(sinceID)
+		myGrabber = HarvesterIDGrabber.HarvesterIDGrabber(geo, sinceID)
+		statuses = myGrabber.grabOneSet()
 		priority = 3
-		
+
 		print statuses
 		for status in statuses:
 			UID, tweetID, text, HashTags, Time = self.parseStatus(status)
 			self.IDQueue.put((UID, tweetID, text, HashTags, Time, priority))
-			self.TweetGrabbedQueue.put(status)
+			self.TweetGrabbedQueue.put((UID, tweetID, text, HashTags, Time, priority))
 		gevent.sleep(200)
 			#STick this in the usual table
 			#Table UserID for the current table
 			#Table UserID2 
 			#Put that UserID onto the stack
 			#Stick the tweet into the collected tweet. Give it a weight. 
-		
-	#===========================================================================
-	# 	for ID in samples:
-	# 		self.IDqueue.put((ID, time, geo))
-	# 
-	#===========================================================================
 	
 	def IDPutter(self, PutterID):
 		#TODO: take ID from self.IDqueueu
@@ -187,7 +190,7 @@ class HarvesterClient:
 				print UID, tweetID, text, HashTags, Time, priority 
 				#dbcursor.execute("INSERT INTO userIDs(UserID, DateAdded, Location) VALUES(%s, %s, %s)", (str(ID), time, geo))
 			except MySQLdb.IntegrityError:
-				#If the ID is duplicate, ignore it. 
+				#If the ID is duplicate, 
 				pass
 			self.dbConn.commit()
 			
@@ -241,7 +244,7 @@ class HarvesterClient:
 				print ID
 			dbconn.commit()
 			
-	def TweetInserter(self, InserterID):
+	def TweetInserter(self, InserterID, InsertTable="testTweets"):
 		timeout = gevent.Timeout(800)
 		timeout.start()
 		try:
@@ -258,7 +261,7 @@ class HarvesterClient:
 					status = self.TweetGrabbedQueue.get(True, 10)
 					text, UID, TweetID, HashTags, Time, Priority = status
 					try:
-						cursor.execute("INSERT INTO testTweets(UserID, TweetID, Text, Time, HashTags) VALUES(%s, %s, %s, %s, %s)", (str(UID), str(TweetID), text, Time, str(HashTags)))
+						cursor.execute("INSERT INTO %s(UserID, TweetID, Text, Time, HashTags) VALUES(%s, %s, %s, %s, %s)", (InsertTable, str(UID), str(TweetID), text, Time, str(HashTags)))
 					except MySQLdb.IntegrityError:
 						self.log2("[Tweet Inserter] Encountered MYSQL Integrity error, Tweet already in database, skipping for now")
 				except Queue.Empty:
@@ -457,15 +460,17 @@ class HarvesterClient:
 		
 		
 		### ID Grabbing Module 
-		print "Starting ID grabbing module"
+		print colored("Starting ID grabbing module", "green")
 		self.IDqueue = Queue.Queue(400)
 		self.IDGrabber = Greenlet.spawn(self.grabIDs)
+		self.lastIDGrabbed = 253018723156381696
 		self.IDputterPool = gevent.pool.Pool(1)
 		Greenlet.spawn(self.spawnIDPutters)
 		### // ID grabbing module
 		
 				
 		### Input ID from Folder Module
+		#FIXME: Put back the ID folder grabber module
 		#self.IDFolderGrabber = Greenlet.spawn(self.FolderGrabber)
 		### // Input ID Module
 		
@@ -484,6 +489,7 @@ class HarvesterClient:
 		#=======================================================================
 		
 		self.TweetGrabbedQueue = Queue.Queue(600)
+		#FIXME: Put back the tweet capturing modules
 		#=======================================================================
 		# self.TweetInsertPool = gevent.pool.Pool(4)
 		# self.TweetGrabPool = gevent.pool.Pool(3)
@@ -493,7 +499,8 @@ class HarvesterClient:
 		#self.resetUserDatabase()		
 		
 		### Monitor Module
-		Greenlet.spawn(self.MonitorThread)
+		#FIXME: put back the monitor module
+		#------------------------------------ Greenlet.spawn(self.MonitorThread)
 		### //Monitor Module
 
 		while True:

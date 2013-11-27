@@ -4,6 +4,8 @@ import glob
 from twython import Twython
 import twython
 from termcolor import colored
+import twitter
+import tweetpony
 
 class twiAuth:
 	def loadCredentialfile(self):
@@ -29,6 +31,17 @@ class twiAuth:
 				self.at = cred
 			elif myType == "Access_token_secret":
 				self.ats = cred
+				
+	def authCredsPythonTwitter(self):
+		try:
+			testApi = twitter.Api(consumer_key=self.ck, consumer_secret=self.cks, access_token_key=self.at, access_token_secret=self.ats)
+			myCreds = testApi.VerifyCredentials()
+			screen_name = myCreds.screen_name
+			msg = "Twitter Authentication seems to be successful with screen_name: " + str(screen_name)
+			print colored(msg, "green")
+			return testApi
+		except twitter.TwitterError:
+			print "Twitter authentication failed with the given authenticators. "		
 		
 	def authCreds(self):
 		testApi = Twython(self.ck, self.cks, self.at, self.ats) 
@@ -43,7 +56,17 @@ class twiAuth:
 			print colored("Twitter Authentication seems to be successful", "green")
 			return testApi
 	
-	def __init__(self):
+	def authCredsTweetPony(self):
+		try:
+			api = tweetpony.API(self.ck, self.cks, self.at, self.ats) 
+			user = api.user
+			msg = "Twitter Authentication seems to be successful with screen_name: " + str(user.screen_name)
+			print colored(msg,"green")
+			return api
+		except ValueError:
+			print "Value error in Twitter Authentication"
+	
+	def __init__(self, Type="Twython"):
 		self.ck = ""
 		self.cks = ""
 		self.at = ""
@@ -52,7 +75,12 @@ class twiAuth:
 		if self.loadCredentialfile() == False:
 			return
 		self.parseCredFile()
-		self.Api = self.authCreds()
+		if Type in "Twython":
+			self.Api = self.authCreds()
+		elif Type in "Python-Twitter":
+			self.Api = self.authCredsPythonTwitter()
+		elif Type in "TweetPony":
+			self.Api = self.authCredsTweetPony() 
 		
 		
 

@@ -5,6 +5,8 @@ Created on Nov 23, 2013
 '''
 
 import twiAuth
+
+
 class HarvesterIDGrabber(object):
     '''
     classdocs
@@ -13,22 +15,25 @@ class HarvesterIDGrabber(object):
     
     '''
 
-    def grabOneSet(self, InputID):
+    def grabOneSet(self):
         API = self.API
         mygeo = self.location
-        tweetID = InputID
-        myq = "q=geocode:" + mygeo + "&since_id:"+ str(tweetID) + "&lang=en&count=100"
-        print "Searching on:", myq
-        stauses = API.search(q=myq)
-        print stauses
+        tweetID = self.lastID
+        stauses = API.search_tweets(q=' ', geocode=mygeo, since_id=tweetID, lang='en', count=100)
         return stauses
+    
+    def testGrabbing(self):
+        statuses = self.grabOneSet(111000)
+        print statuses
 
-    def __init__(self,location):
+    def __init__(self,location, lastID):
         '''
         Constructor
         ID grabber needs a location to search on
         '''
         self.location = location
-        self.TwiAuth = twiAuth.twiAuth()
+        self.TwiAuth = twiAuth.twiAuth("TweetPony")
         self.API = self.TwiAuth.Api
+        self.testGrabbing()
+        self.lastID = lastID
         
