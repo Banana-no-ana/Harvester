@@ -128,12 +128,11 @@ class HarvesterClient:
 					dbconn.commit()
 	
 	def parseStatus(self, status):
-		print status
 		text = status[u'text'].encode('UTF-8')
 		UID = status[u'user'][u'id']
 		TweetID = status[u'id']
 		HashTags = status[u'entities'][u'hashtags']
-		Time = time.strftime('%Y-%m-%d %H:%M:%S', time.strptime(status[u'created_at'],'%a %b %d %H:%M:%S +0000 %Y'))
+		Time = status[u'created_at']
 		return UID, TweetID, text, HashTags, Time
 		
 	def grabIDSpawners(self):
@@ -148,7 +147,6 @@ class HarvesterClient:
 	def grabIDs(self, grabIDnum):
 		#TODO: automatically grab IDs given a particular location
 		#Right now only takes IDs from a file
-		#put IDs grabbed into self.IDqueue
 		#Since ID: Starting with 253018723156381696, which is an ID in 2012-10-02
 		myname = "[Location-Based Tweet Grabber " + str(grabIDnum) + "] "
 		self.log(myname)
@@ -162,8 +160,8 @@ class HarvesterClient:
 
 		for status in statuses:
 			UID, tweetID, text, HashTags, Time = self.parseStatus(status)
-			self.IDQueue.put((UID, tweetID, text, HashTags, Time, priority))
-			self.TweetGrabbedQueue.put((UID, tweetID, text, HashTags, Time, priority))
+			self.IDqueue.put((UID, tweetID, text, geo, HashTags, Time, priority))
+			#self.TweetGrabbedQueue.put((UID, tweetID, text, HashTags, Time, priority))
 		self.lastIDGrabbed = tweetID
 		gevent.sleep(200)
 			#STick this in the usual table
@@ -171,9 +169,18 @@ class HarvesterClient:
 			#Table UserID2 
 			#Put that UserID onto the stack
 			#Stick the tweet into the collected tweet. Give it a weight. 
-	
+			
+	def insertStatusIntoNewIDTable(self, status, cursor):
+		(UID, tweetID, text, geo, HashTags, Time, priority) = status
+		print (str(UID), str(Time), geo)
+		mymsg = "INSERT INTO UserID2(UserID, TweetDate, Location, Frequency) VALUES(%s, %s, %s, 1) ON DUPLICATE KEY UPDATE Frequency = Frequency + 1"
+		try:
+			cursor.execute(mymsg, (str(UID), str(Time), geo))
+		except Exception as e:
+			print colored(e, "red")
+		
+		
 	def IDPutter(self, PutterID):
-		#TODO: take ID from self.IDqueueu
 		#GeoCode: 49.168236527256,-122.857360839844,50km
 		myName = "[ID Putter " + str(PutterID) + "] "
 		msg = myName + "Has spawned"
@@ -185,14 +192,9 @@ class HarvesterClient:
 		dbcursor = dbconn.cursor()
 		while numPutted < 300:
 			status =  self.IDqueue.get(True)
-			UID, tweetID, text, HashTags, Time, priority = status			
-			try:
-				print UID, tweetID, text, HashTags, Time, priority 
-				#dbcursor.execute("INSERT INTO userIDs(UserID, DateAdded, Location) VALUES(%s, %s, %s)", (str(ID), time, geo))
-			except MySQLdb.IntegrityError:
-				#If the ID is duplicate, 
-				pass
-			self.dbConn.commit()
+			self.insertStatusIntoNewIDTable(status, dbcursor)
+			if numPutted % 20 == 0:
+				self.dbConn.commit()
 			
 		msg = myName + " has made " +str(numPutted) + " insertions, shutting down now. "
 		self.log(msg)

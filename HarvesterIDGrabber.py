@@ -18,7 +18,8 @@ class HarvesterIDGrabber(object):
     def randomStart(self, startID):
         start = startID
         end = 415486363714590720
-        return random.randrange(start, end)        
+        mynum = random.randrange(start, end)        
+        return mynum
 
     def grabOneSet(self):
         API = self.API
