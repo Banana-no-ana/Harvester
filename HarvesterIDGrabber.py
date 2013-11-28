@@ -5,7 +5,7 @@ Created on Nov 23, 2013
 '''
 
 import twiAuth
-
+import random
 
 class HarvesterIDGrabber(object):
     '''
@@ -14,6 +14,11 @@ class HarvesterIDGrabber(object):
     Grabber takes a location (Lat, long, radius)
     
     '''
+    
+    def randomStart(self, startID):
+        start = startID
+        end = 415486363714590720
+        return random.randrange(start, end)        
 
     def grabOneSet(self):
         API = self.API
@@ -34,5 +39,5 @@ class HarvesterIDGrabber(object):
         self.location = location
         self.TwiAuth = twiAuth.twiAuth("TweetPony")
         self.API = self.TwiAuth.Api
-        self.lastID = lastID
+        self.lastID = self.randomStart(lastID)
         
