@@ -340,6 +340,7 @@ class HarvesterClient:
 						print colored(stderrMessage, "yellow", "on_gray")
 						gevent.sleep(3)
 					else:
+						self.log(myName + str(e))
 						print colored(str(e), "yellow")
 				else:					
 					gevent.sleep()
