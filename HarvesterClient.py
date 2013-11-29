@@ -160,7 +160,10 @@ class HarvesterClient:
 		cursor.execute("SELECT * FROM userIDs WHERE NotScanned=0 LIMIT 1")
 		self.log2("[DB ID Grabber] Selected 1 rows from the Twitter Users database")
 		row = cursor.fetchone()
-		print row
+		if row is None:
+			print colored("Didn't get an ID from the database, database probably empty", "red")
+			gevent.sleep(600)
+			return 
 		ID = row[0]		
 		try:
 			self.TweetIDQueue.put(ID, True, 30)
