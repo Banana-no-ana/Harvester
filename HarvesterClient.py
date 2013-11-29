@@ -137,24 +137,24 @@ class HarvesterClient:
 		
 	def grabIDSpawners(self):
 		IDgrabbernum = 1
+		geo = "49.168236527256,-122.857360839844,50km"
+		sinceID = self.lastIDGrabbed
+		myGrabber = HarvesterIDGrabber.HarvesterIDGrabber(geo, sinceID)
+		
 		print colored("Spawning Tweet Grabbers based on location for ID harvesting")
 		while True:
-			gevent.spawn(self.grabIDs, IDgrabbernum)
+			gevent.spawn(self.grabIDs, IDgrabbernum, myGrabber)
 			IDgrabbernum = IDgrabbernum + 1
 			gevent.sleep(120)	
 		
 	
-	def grabIDs(self, grabIDnum):
+	def grabIDs(self, grabIDnum, myGrabber):
 		#TODO: automatically grab IDs given a particular location
 		#Right now only takes IDs from a file
 		#Since ID: Starting with 253018723156381696, which is an ID in 2012-10-02
 		myname = "[Location-Based Tweet Grabber " + str(grabIDnum) + "] "
-		self.log(myname)
-		
-		time = datetime.datetime.now()
+		self.log(myname + "is spawned")
 		geo = "49.168236527256,-122.857360839844,50km"
-		sinceID = self.lastIDGrabbed
-		myGrabber = HarvesterIDGrabber.HarvesterIDGrabber(geo, sinceID)
 		statuses = myGrabber.grabOneSet()
 		priority = 3
 
@@ -162,20 +162,19 @@ class HarvesterClient:
 			UID, tweetID, text, HashTags, Time = self.parseStatus(status)
 			self.IDqueue.put((UID, tweetID, text, geo, HashTags, Time, priority))
 			#self.TweetGrabbedQueue.put((UID, tweetID, text, HashTags, Time, priority))
-		self.lastIDGrabbed = tweetID
+		myGrabber.lastID = tweetID
 		gevent.sleep(200)
 			#STick this in the usual table
-			#Table UserID for the current table
-			#Table UserID2 
-			#Put that UserID onto the stack
 			#Stick the tweet into the collected tweet. Give it a weight. 
 			
 	def insertStatusIntoNewIDTable(self, status, cursor):
 		(UID, tweetID, text, geo, HashTags, Time, priority) = status
 		print (str(UID), str(Time), geo)
 		mymsg = "INSERT INTO UserID2(UserID, TweetDate, Location, Frequency) VALUES(%s, %s, %s, 1) ON DUPLICATE KEY UPDATE Frequency = Frequency + 1"
+		print mymsg
 		try:
 			cursor.execute(mymsg, (str(UID), str(Time), geo))
+			print "cursor should be executing correctly"
 		except Exception as e:
 			print colored(e, "red")
 		

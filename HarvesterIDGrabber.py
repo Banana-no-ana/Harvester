@@ -20,12 +20,18 @@ class HarvesterIDGrabber(object):
         end = 415486363714590720
         mynum = random.randrange(start, end)        
         return mynum
+    
+    def getLastID(self, statuses):
+        status = statuses[-1]
+        ID = status[u'id']        
+        return ID
 
     def grabOneSet(self):
         API = self.API
         mygeo = self.location
         tweetID = self.lastID
         stauses = API.search_tweets(q=' ', geocode=mygeo, since_id=tweetID, lang='en', count=100)
+        self.lastID = self.getLastID(stauses)
         return stauses
     
     def testGrabbing(self):
