@@ -284,8 +284,9 @@ class HarvesterClient:
 						print colored(stderrMessage, "blue")
 						gevent.sleep(3)
 					else:
-						self.log(myName + str(e))
-						print colored(str(e), "yellow")
+						errMessage = myName +  str(e.__class__.__name__) + " : " + str(e)
+						self.log(errMessage)
+						print colored(errMessage, "yellow")
 				else:					
 					gevent.sleep()
 					try: 
