@@ -135,46 +135,47 @@ class HarvesterClient:
 		Time = status[u'created_at']
 		return UID, TweetID, text, HashTags, Time
 		
-	def grabIDSpawners(self):
-		IDgrabbernum = 1
+	def grabIDSpawners(self):		
 		geo = "49.168236527256,-122.857360839844,50km"
 		sinceID = self.lastIDGrabbed
 		myGrabber = HarvesterIDGrabber.HarvesterIDGrabber(geo, sinceID)
 		
+		msg = "HarvesterID Grabber is starting to gather IDs from: " + str(myGrabber.lastID)
+		self.log(msg)
+		
+		IDgrabbernum = 1
 		print colored("Spawning Tweet Grabbers based on location for ID harvesting")
 		while True:
-			gevent.spawn(self.grabIDs, IDgrabbernum, myGrabber)
+			self.grabIDs(IDgrabbernum, geo, myGrabber)
 			IDgrabbernum = IDgrabbernum + 1
-			gevent.sleep(120)	
 		
 	
-	def grabIDs(self, grabIDnum, myGrabber):
+	def grabIDs(self, grabIDnum, geo, myGrabber):
 		#TODO: automatically grab IDs given a particular location
 		#Right now only takes IDs from a file
 		#Since ID: Starting with 253018723156381696, which is an ID in 2012-10-02
 		myname = "[Location-Based Tweet Grabber " + str(grabIDnum) + "] "
 		self.log(myname + "is spawned")
-		geo = "49.168236527256,-122.857360839844,50km"
 		statuses = myGrabber.grabOneSet()
+		msg = myname + "has grabbed One Set (200) Tweets, extracting UserID and tweets now"
+		self.log2(msg)
+		print colored(msg, "green") #FIXME: Delete this line
 		priority = 3
 
 		for status in statuses:
 			UID, tweetID, text, HashTags, Time = self.parseStatus(status)
 			self.IDqueue.put((UID, tweetID, text, geo, HashTags, Time, priority))
 			#self.TweetGrabbedQueue.put((UID, tweetID, text, HashTags, Time, priority))
+			#FIXME: Add the tweets to the tweet table too
+			#TODO: Add another row in the tweets table, call that one the improved accuracy table. 
 		myGrabber.lastID = tweetID
-		gevent.sleep(200)
-			#STick this in the usual table
-			#Stick the tweet into the collected tweet. Give it a weight. 
+		self.lastIDGrabbed = tweetID
 			
 	def insertStatusIntoNewIDTable(self, status, cursor):
 		(UID, tweetID, text, geo, HashTags, Time, priority) = status
-		print (str(UID), str(Time), geo)
 		mymsg = "INSERT INTO UserID2(UserID, TweetDate, Location, Frequency) VALUES(%s, %s, %s, 1) ON DUPLICATE KEY UPDATE Frequency = Frequency + 1"
-		print mymsg
 		try:
 			cursor.execute(mymsg, (str(UID), str(Time), geo))
-			print "cursor should be executing correctly"
 		except Exception as e:
 			print colored(e, "red")
 		
@@ -192,12 +193,16 @@ class HarvesterClient:
 		while numPutted < 300:
 			status =  self.IDqueue.get(True)
 			self.insertStatusIntoNewIDTable(status, dbcursor)
+			numPutted += 1
 			if numPutted % 20 == 0:
-				self.dbConn.commit()
+				dbconn.commit()				
+		dbconn.commit()
 			
-		msg = myName + " has made " +str(numPutted) + " insertions, shutting down now. "
+		msg = myName + "has made " +str(numPutted) + " insertions, shutting down now. "
 		self.log(msg)
 		print colored(msg, "green")
+		
+		dbconn.close()
 			
 	def spawnIDPutters(self):
 		PutterID = 1
@@ -467,8 +472,9 @@ class HarvesterClient:
 		### ID Grabbing Module 
 		print colored("Starting ID grabbing module", "green")
 		self.IDqueue = Queue.Queue(400)
-		self.IDGrabber = Greenlet.spawn(self.grabIDSpawners)
 		self.lastIDGrabbed = 253018723156381696
+		self.IDGrabber = Greenlet.spawn(self.grabIDSpawners)
+		
 		self.IDputterPool = gevent.pool.Pool(1)
 		Greenlet.spawn(self.spawnIDPutters)
 		### // ID grabbing module

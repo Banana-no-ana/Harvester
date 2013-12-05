@@ -17,8 +17,11 @@ class HarvesterIDGrabber(object):
     
     def randomStart(self, startID):
         start = startID
+        #start should be 253018723156381696, which is on 2012-10-02
+        #end shoudl be 415486363714590720, which is on 2013, 11-28
         end = 415486363714590720
-        mynum = random.randrange(start, end)        
+        mynum = random.randrange(start, end)
+        #print "random number is: ", mynum
         return mynum
     
     def getLastID(self, statuses):
