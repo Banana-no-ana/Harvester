@@ -177,7 +177,8 @@ class HarvesterClient:
 		try:
 			cursor.execute(mymsg, (str(UID), str(Time), geo))
 		except Exception as e:
-			print colored(e, "red")
+			msg = "HarvestClient.insertStatusIntoNewIDTable errored with: " + e
+			print colored(msg, "red")
 		
 		
 	def IDPutter(self, PutterID):
