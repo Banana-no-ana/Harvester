@@ -157,6 +157,9 @@ class HarvesterClient:
 		myname = "[Location-Based Tweet Grabber " + str(grabIDnum) + "] "
 		self.log(myname + "is spawned")
 		statuses = myGrabber.grabOneSet()
+		while len(statuses) < 1:
+			gevent.sleep(300)
+			statuses = myGrabber.grabOneSet()
 		msg = myname + "has grabbed One Set (200) Tweets, extracting UserID and tweets now"
 		self.log2(msg)
 		print colored(msg, "green") #FIXME: Delete this line

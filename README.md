@@ -38,7 +38,6 @@ Needed packages:
 	sudo pip install easytime (Used to log time)
 	sudo apt-get install python-mysqldb (Need python-mysqldb)
 	
-
 Additional things:
 
 	Make sure there's a "log" folder	

@@ -6,6 +6,7 @@ Created on Nov 23, 2013
 
 import twiAuth
 import random
+from termcolor import colored
 
 class HarvesterIDGrabber(object):
     '''
@@ -33,7 +34,12 @@ class HarvesterIDGrabber(object):
         API = self.API
         mygeo = self.location
         tweetID = self.lastID
-        stauses = API.search_tweets(q=' ', geocode=mygeo, since_id=tweetID, lang='en', count=100)
+        try: 
+            stauses = API.search_tweets(q=' ', geocode=mygeo, since_id=tweetID, lang='en', count=100)
+        except twiAuth.twitter.TwitterError as e:
+            msg = "Twitter Errror occured: " + e
+            print colored(msg, "yellow")
+            return []
         self.lastID = self.getLastID(stauses)
         return stauses
     
