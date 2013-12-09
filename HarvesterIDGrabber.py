@@ -36,7 +36,7 @@ class HarvesterIDGrabber(object):
         tweetID = self.lastID
         try: 
             stauses = API.search_tweets(q=' ', geocode=mygeo, since_id=tweetID, lang='en', count=100)
-        except twiAuth.twitter.TwitterError as e:
+        except Exception as e:
             msg = "Twitter Errror occured: " + e
             print colored(msg, "yellow")
             return []
