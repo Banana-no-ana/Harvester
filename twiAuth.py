@@ -45,7 +45,7 @@ class twiAuth:
 		except twitter.TwitterError:
 			print "Twitter authentication failed with the given authenticators. "		
 		
-	def authCreds(self):
+	def authCredsTwython(self):
 		testApi = Twython(self.ck, self.cks, self.at, self.ats) 
 		#Test if the API keys are the developers:
 		if self.ck in 'UmTtg8DMpMXcgzkbIErSQ':
@@ -65,8 +65,14 @@ class twiAuth:
 			msg = "Twitter Authentication seems to be successful with screen_name: " + str(user.screen_name)
 			print colored(msg,"green")
 			return api
-		except ValueError:
-			print "Value error in Twitter Authentication"
+		except (ValueError, tweetpony.APIError) as e:
+			if ValueError in e:
+				print "Value error in Twitter Authentication"
+			elif tweetpony.APIError in e:
+				msg = "Twitter is rejecting your credentials: " + str(e)
+				print colored(msg, "red")
+			else:
+				print colored(str(e), "red")
 	
 	def __init__(self, Type="Twython"):
 		self.ck = ""
@@ -78,7 +84,7 @@ class twiAuth:
 			return
 		self.parseCredFile()
 		if Type in "Twython":
-			self.Api = self.authCreds()
+			self.Api = self.authCredsTwython()
 		elif Type in "Python-Twitter":
 			self.Api = self.authCredsPythonTwitter()
 		elif Type in "TweetPony":

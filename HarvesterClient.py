@@ -151,7 +151,6 @@ class HarvesterClient:
 		
 	
 	def grabIDs(self, grabIDnum, geo, myGrabber):
-		#TODO: automatically grab IDs given a particular location
 		#Right now only takes IDs from a file
 		#Since ID: Starting with 253018723156381696, which is an ID in 2012-10-02
 		myname = "[Location-Based Tweet Grabber " + str(grabIDnum) + "] "
@@ -162,15 +161,12 @@ class HarvesterClient:
 			statuses = myGrabber.grabOneSet()
 		msg = myname + "has grabbed One Set (200) Tweets, extracting UserID and tweets now"
 		self.log2(msg)
-		print colored(msg, "green") #FIXME: Delete this line
-		priority = 3
+		priority = 99
 
 		for status in statuses:
 			UID, tweetID, text, HashTags, Time = self.parseStatus(status)
 			self.IDqueue.put((UID, tweetID, text, geo, HashTags, Time, priority))
-			#self.TweetGrabbedQueue.put((UID, tweetID, text, HashTags, Time, priority))
-			#FIXME: Add the tweets to the tweet table too
-			#TODO: Add another row in the tweets table, call that one the improved accuracy table. 
+			self.TweetGrabbedQueue.put((text, UID, tweetID, HashTags, Time, priority))			
 		myGrabber.lastID = tweetID
 		self.lastIDGrabbed = tweetID
 			
@@ -180,8 +176,9 @@ class HarvesterClient:
 		try:
 			cursor.execute(mymsg, (str(UID), str(Time), geo))
 		except Exception as e:
-			msg = "HarvestClient.insertStatusIntoNewIDTable errored with: " + e
+			msg = "HarvestClient.insertStatusIntoNewIDTable errored with: " + str(e)
 			print colored(msg, "red")
+			self.log(msg) 
 		
 		
 	def IDPutter(self, PutterID):
@@ -198,7 +195,7 @@ class HarvesterClient:
 			status =  self.IDqueue.get(True)
 			self.insertStatusIntoNewIDTable(status, dbcursor)
 			numPutted += 1
-			if numPutted % 20 == 0:
+			if numPutted % 10 == 0:
 				dbconn.commit()				
 		dbconn.commit()
 			
@@ -254,7 +251,7 @@ class HarvesterClient:
 				print ID
 			dbconn.commit()
 			
-	def TweetInserter(self, InserterID, InsertTable="testTweets"):
+	def TweetInserter(self, InserterID, InsertTable='newTweets'):
 		timeout = gevent.Timeout(800)
 		timeout.start()
 		try:
@@ -271,15 +268,17 @@ class HarvesterClient:
 					status = self.TweetGrabbedQueue.get(True, 10)
 					text, UID, TweetID, HashTags, Time, Priority = status
 					try:
-						cursor.execute("INSERT INTO %s(UserID, TweetID, Text, Time, HashTags) VALUES(%s, %s, %s, %s, %s)", (InsertTable, str(UID), str(TweetID), text, Time, str(HashTags)))
+						#print (InsertTable, str(UID), str(TweetID), text, str(Time), str(HashTags), str(Priority))
+						cursor.execute("INSERT INTO newTweets(UserID, TweetID, Text, Time, HashTags, Relevance) VALUES(%s, %s, %s, %s, %s, %s)", (str(UID), TweetID, text, str(Time), str(HashTags), Priority))
 					except MySQLdb.IntegrityError:
-						self.log2("[Tweet Inserter] Encountered MYSQL Integrity error, Tweet already in database, skipping for now")
+						msg = myName + "Encountered MYSQL Integrity error with status: " + str(status) + ", Tweet already in database, skipping for now"
+						self.log2(msg)
 				except Queue.Empty:
 					message = myName + "Queue empty timeout (probably due to deadlock), temporarily giving up control"
 					gevent.sleep()
 					self.log(message)			
 				
-					#If the ID is duplicate, ignore it. 
+					#If the ID is duplicate, ignore it. e
 				dbConnection.commit()
 				insertions = insertions + 1
 			finishMsg = "Tweet Inserter " + str(InserterID) + " has made " +str(insertions) + " insertions, shutting down now. "
@@ -505,13 +504,17 @@ class HarvesterClient:
 		
 		self.TweetGrabbedQueue = Queue.Queue(600)
 		#FIXME: Put back the tweet capturing modules
+		self.TweetInsertPool = gevent.pool.Pool(4)
+		Greenlet.spawn(self.spawnTweetInserters)
+		
 		#=======================================================================
-		# self.TweetInsertPool = gevent.pool.Pool(4)
 		# self.TweetGrabPool = gevent.pool.Pool(3)
-		# Greenlet.spawn(self.spawnTweetInserters)
-		# Greenlet.spawn(self.spawnTweetGrabbers)		
+		# Greenlet.spawn(self.spawnTweetGrabbers)				
 		#=======================================================================
-		#self.resetUserDatabase()		
+		
+		#=======================================================================
+		# self.resetUserDatabase()		
+		#=======================================================================
 		
 		### Monitor Module
 		#FIXME: put back the monitor module
