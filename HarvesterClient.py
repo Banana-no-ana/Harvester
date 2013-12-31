@@ -245,7 +245,7 @@ class HarvesterClient:
 		IDGrabber.updateRowIntoDatabase(ID)
 		IDGrabber.closeDBConnection()
 
-		msg = "and it got the ID: " + str(GrabberID)
+		msg = "and it got the ID: " + str(ID)
 		self.print_moduleCompleted(myName, msg)
 		#TODO: Set The scanned time to now. 
 	
