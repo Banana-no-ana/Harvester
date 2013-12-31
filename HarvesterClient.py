@@ -385,6 +385,8 @@ class HarvesterClient:
 					statuses = self.getStauses(UID, lastTweetID, myName)
 					for status in statuses:
 						UID, tweetID, text, HashTags, Time = self.parseStatus(status)
+						print Time
+						#
 						try:
 							self.TweetGrabbedQueue.put((text, UID, tweetID, HashTags, Time, Frequency), True, 10)
 						except Queue.Full:
