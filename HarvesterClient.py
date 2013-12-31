@@ -363,6 +363,11 @@ class HarvesterClient:
 			msg = myName + "Errored with: " + str(e)
 			self.log(msg)
 			print colored(msg, "yellow")
+			
+	def caughtUnknownError(self, moduleName, e):
+		msg = moduleName + "Errored with: " + str(e)
+		sys.stderr.write(colored(msg, "red"))
+		self.log(msg)
 	
 	def GrabTweetsByID(self, (UID, Frequency), Grabbernum):
 		timeout = gevent.Timeout(1200)
@@ -391,9 +396,12 @@ class HarvesterClient:
 						self.logTwythonRateLimitError(myName)
 						continue
 					elif twython.TwythonError:
-						gevent.sleep(3)						
-				lastTweetID = tweetID -1
-				numTweets = numTweets + len(statuses)
+						gevent.sleep(3)
+					else:
+						self.caughtUnknownError(myName, e)
+				else:					
+					lastTweetID = tweetID -1
+					numTweets = numTweets + len(statuses)
 		except (gevent.Timeout, Exception) as e:
 			self.handleGrabTweetTimeout(e, myName)
 		

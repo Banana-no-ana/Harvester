@@ -42,7 +42,7 @@ class HarvesterIDGrabber(object):
         except (twiAuth.tweetpony.APIError, Exception) as e:
             msg = "Errror occured: " + str(e)
             print colored(msg, "red")
-            self.log
+            self.log(msg)
             return []
         self.lastID = self.getLastID(stauses)
         return stauses
