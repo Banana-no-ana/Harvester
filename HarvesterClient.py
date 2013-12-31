@@ -166,7 +166,7 @@ class HarvesterClient:
 			statuses = myGrabber.grabOneSet()
 		msg = myname + "has grabbed One Set (200) Tweets, extracting UserID and tweets now"
 		self.log2(msg)
-		priority = 99
+		priority = 9999
 
 		for status in statuses:
 			UID, tweetID, text, HashTags, Time = self.parseStatus(status)
