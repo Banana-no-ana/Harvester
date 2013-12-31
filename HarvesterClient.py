@@ -137,7 +137,8 @@ class HarvesterClient:
 		TweetID = status[u'id']
 		HashTags = status[u'entities'][u'hashtags']
 		Time = status[u'created_at']
-		return UID, TweetID, text, HashTags, Time
+		myTime = datetime.datetime.strptime(Time, '%a %b %d %H:%M:%S +0000 %Y')
+		return UID, TweetID, text, HashTags, str(myTime)
 		
 	def grabIDSpawners(self):
 		geo = "49.168236527256,-122.857360839844,50km"
@@ -384,9 +385,7 @@ class HarvesterClient:
 				try:
 					statuses = self.getStauses(UID, lastTweetID, myName)
 					for status in statuses:
-						UID, tweetID, text, HashTags, Time = self.parseStatus(status)
-						print Time
-						#
+						UID, tweetID, text, HashTags, Time = self.parseStatus(status)						
 						try:
 							self.TweetGrabbedQueue.put((text, UID, tweetID, HashTags, Time, Frequency), True, 10)
 						except Queue.Full:
