@@ -15,9 +15,8 @@ def serverMode():
 def clientMode(ip):
 	myClient = HarvesterClient.HarvesterClient(ip)
 	#Assuming client is at this point ready to go
-	#start up a stream to get sample data. Get Canadian and American data only. 
-	myClient.spawnStreamCapture()
 	
+	myClient.spawnStreamCapture()	
 	#wait for user to input a command, then queue up that command
 
 def main():

@@ -15,11 +15,14 @@ class HarvesterIDGrabber(object):
     Grabber takes a location (Lat, long, radius)
     
     '''
+    def getEndNum(self):
+        pass
     
     def randomStart(self, startID):
         start = startID
         #start should be 253018723156381696, which is on 2012-10-02
         #end shoudl be 415486363714590720, which is on 2013, 11-28
+        #TODO: Change the end date to the most current, or iSettable
         end = 415486363714590720
         mynum = random.randrange(start, end)
         #print "random number is: ", mynum
@@ -36,9 +39,10 @@ class HarvesterIDGrabber(object):
         tweetID = self.lastID
         try: 
             stauses = API.search_tweets(q=' ', geocode=mygeo, since_id=tweetID, lang='en', count=100)
-        except twiAuth.tweetpony.APIError as e:
-            msg = "Twitter Errror occured: " + str(e)
-            print colored(msg, "yellow")
+        except (twiAuth.tweetpony.APIError, Exception) as e:
+            msg = "Errror occured: " + str(e)
+            print colored(msg, "red")
+            self.log
             return []
         self.lastID = self.getLastID(stauses)
         return stauses
