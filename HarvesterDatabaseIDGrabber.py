@@ -33,12 +33,13 @@ class HarvesterDatabaseIDGrabber(object):
         self.log2("[DB ID Grabber] Selected 1 rows from the Twitter Users database")
         row = cursor.fetchone()
         cursor.close()
-        
+         
         return row
     
     def updateRowIntoDatabase(self, ID):
         cursor = self.getDBCurosr()
-        cursor.execute("Update userIDs SET NotScanned=1 Where UserID=%s ;", str(ID))
+        #TODO: Have a way to set the database tables
+        cursor.execute("Update UserID2 SET NotScanned=1 Where UserID=%s ;", str(ID))
         
         logmsg = self.myName + "got the userID: " + str(ID) + " Updated that into database now"
         self.log2(logmsg)

@@ -144,7 +144,7 @@ class HarvesterClient:
 		sinceID = self.lastIDGrabbed
 		myGrabber = HarvesterIDGrabber.HarvesterIDGrabber(geo, sinceID)
 		
-		msg = "HarvesterID Grabber is starting to gather IDs from: " + str(myGrabber.lastID)
+		msg = "HarvesterID Grabber is starting to gather IDs beginning from tweetID: " + str(myGrabber.lastID)
 		self.log(msg)
 		print colored(msg, "yellow")
 		
@@ -521,8 +521,8 @@ class HarvesterClient:
 		
 		### Tweet Grabber Module
 		self.TweetIDQueue = Queue.Queue(4)
-		self.IDGrabberPool = gevent.pool.Pool(2)
-		Greenlet.spawn(self.spawnIDDBGrabbers)	
+		self.IDGrabberPool = gevent.pool.Pool(1)
+		Greenlet.spawn(self.spawnIDDBGrabbers)
 		
 		self.TweetGrabbedQueue = Queue.Queue(600)
 		self.TweetInsertPool = gevent.pool.Pool(2)
