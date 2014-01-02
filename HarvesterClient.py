@@ -137,9 +137,15 @@ class HarvesterClient:
 		TweetID = status[u'id']
 		HashTags = status[u'entities'][u'hashtags']
 		Time = status[u'created_at']
-		myTime = datetime.datetime.strptime(Time, '%a %b %d %H:%M:%S +0000 %Y')
-		return UID, TweetID, text, HashTags, str(myTime)
 		
+		if isinstance(Time, datetime.datetime):
+			myTime = Time	
+		else:
+			myTime = datetime.datetime.strptime(Time, '%a %b %d %H:%M:%S +0000 %Y')
+		
+		return UID, TweetID, text, HashTags, str(myTime)
+	
+
 	def grabIDSpawners(self):
 		geo = "49.168236527256,-122.857360839844,50km"
 		sinceID = self.lastIDGrabbed
@@ -170,7 +176,10 @@ class HarvesterClient:
 		priority = 9999
 
 		for status in statuses:
-			UID, tweetID, text, HashTags, Time = self.parseStatus(status)
+			try:
+				UID, tweetID, text, HashTags, Time = self.parseStatus(status)
+			except Exception as e:
+				self.caughtUnknownError(myname, e, str(status))
 			self.IDqueue.put((UID, tweetID, text, geo, HashTags, Time, priority))
 			self.TweetGrabbedQueue.put((text, UID, tweetID, HashTags, Time, priority))			
 		myGrabber.lastID = tweetID
@@ -365,9 +374,12 @@ class HarvesterClient:
 			self.log(msg)
 			print colored(msg, "yellow")
 			
-	def caughtUnknownError(self, moduleName, e):
-		msg = moduleName + "Errored with: " + str(e)
+	def caughtUnknownError(self, moduleName, e, additional=""):
+		msg = moduleName + "Errored with: " + str(e) + "\n"
 		sys.stderr.write(colored(msg, "red"))
+		if additional:
+			msg = "Additionally: " + additional
+			sys.stderr.write(colored(msg, "red"))
 		self.log(msg)
 	
 	def GrabTweetsByID(self, (UID, Frequency), Grabbernum):
@@ -390,7 +402,7 @@ class HarvesterClient:
 							self.TweetGrabbedQueue.put((text, UID, tweetID, HashTags, Time, Frequency), True, 10)
 						except Queue.Full:
 							self.QueueFullError(myName)
-				except (twython.TwythonRateLimitError, twython.TwythonError, EmptyStatusStack) as e:
+				except (twython.TwythonRateLimitError, twython.TwythonError, EmptyStatusStack, Exception) as e:
 					if EmptyStatusStack in e:
 						break
 					elif twython.TwythonRateLimitError in e:
@@ -399,6 +411,7 @@ class HarvesterClient:
 					elif twython.TwythonError:
 						gevent.sleep(3)
 					else:
+						sys.stderr.write(status)
 						self.caughtUnknownError(myName, e)
 				else:					
 					lastTweetID = tweetID -1

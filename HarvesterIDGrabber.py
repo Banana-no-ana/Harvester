@@ -37,7 +37,7 @@ class HarvesterIDGrabber(object):
         API = self.API
         mygeo = self.location
         tweetID = self.lastID
-        try: 
+        try:
             stauses = API.search_tweets(q=' ', geocode=mygeo, since_id=tweetID, lang='en', count=100)
         except (twiAuth.tweetpony.APIError, Exception) as e:
             msg = "Errror occured: " + str(e)
