@@ -379,9 +379,9 @@ class HarvesterClient:
 		
 	def handleGrabTweetTimeout(self, e, myName):
 		if gevent.Timeout in e:
-			msg = myName + "timed out after 1200 seconds. Cleaning up now. "
+			msg = myName + "timed out after 1200 seconds. Cleaning up now. \n"
 			self.log(msg)
-			print colored(msg, "yellow")
+			sys.stderr.write(colored(msg, "yellow"))
 		else:
 			msg = myName + "Errored with: " + str(e)
 			self.log(msg)
@@ -429,7 +429,7 @@ class HarvesterClient:
 					lastTweetID = tweetID -1
 					numTweets = numTweets + len(statuses)
 		except (gevent.Timeout) as e:
-			print colored("GrabTweetsByID Timed out", "yellow")
+			sys.stderr.write(colored("GrabTweetsByID Timed out\n", "yellow"))
 			self.handleGrabTweetTimeout(e, myName)
 		
 		timeout.cancel()
@@ -561,10 +561,10 @@ class HarvesterClient:
 		Greenlet.spawn(self.spawnIDDBGrabbers)
 		
 		self.TweetGrabbedQueue = Queue.Queue(1000)
-		self.TweetInsertPool = gevent.pool.Pool(4)
+		self.TweetInsertPool = gevent.pool.Pool(3)
 		Greenlet.spawn(self.spawnTweetInserters)
 		
-		self.TweetGrabPool = gevent.pool.Pool(7)
+		self.TweetGrabPool = gevent.pool.Pool(4)
 		Greenlet.spawn(self.spawnTweetGrabbers)
 		
 		#=======================================================================

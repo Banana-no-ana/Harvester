@@ -7,6 +7,7 @@ Created on Nov 23, 2013
 import twiAuth
 import random
 from termcolor import colored
+import sys
 
 class HarvesterIDGrabber(object):
     '''
@@ -46,8 +47,7 @@ class HarvesterIDGrabber(object):
             stauses = API.search_tweets(q=' ', geocode=mygeo, since_id=tweetID, lang='en', count=100)
         except (twiAuth.tweetpony.APIError, Exception) as e:
             msg = "Errror occured: " + str(e)
-            print colored(msg, "red")
-            self.log(msg)
+            sys.stderr.write(colored(msg, "red"))
             return []
         self.lastID = self.getLastID(stauses)
         return stauses
