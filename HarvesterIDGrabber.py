@@ -18,12 +18,17 @@ class HarvesterIDGrabber(object):
     def getEndNum(self):
         pass
     
-    def randomStart(self, startID):
-        start = startID
+    def resetMaxTweetID(self):
+        #Pray to god this doesn't start a race condition, it probably will at some random case though
+        self.lastID = self.randomStart()
+        return self.lastID
+    
+    def randomStart(self):
+        start = self.minID
         #start should be 253018723156381696, which is on 2012-10-02
         #end shoudl be 415486363714590720, which is on 2013, 11-28
         #TODO: Change the end date to the most current, or iSettable
-        end = 415486363714590720
+        end = self.maxID
         mynum = random.randrange(start, end)
         #print "random number is: ", mynum
         return mynum
@@ -59,5 +64,7 @@ class HarvesterIDGrabber(object):
         self.location = location
         self.TwiAuth = twiAuth.twiAuth("TweetPony")
         self.API = self.TwiAuth.Api
-        self.lastID = self.randomStart(lastID)
+        self.minID = lastID
+        self.maxID = 415486363714590720
+        self.lastID = self.randomStart()
         
