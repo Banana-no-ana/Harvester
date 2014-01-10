@@ -2,12 +2,14 @@
 ## THis is the client portion of the harvester
 import sys
 import HarvesterLog
+import HarvesterIDGrabber
+import HarvesterDatabaseIDGrabber
 from gevent import monkey
 from gevent import Greenlet
 monkey.patch_all()
 from gevent import socket
-import gevent
 from gevent import pool
+import gevent
 import pickle
 from termcolor import colored
 import MySQLdb
@@ -17,9 +19,11 @@ import time
 import twiAuth
 import glob
 import twython
-import pdb
+
 
 class HarvesterClient:
+	
+			
 	def log(self, message):
 		self.logger.log(message)
 		self.logger2.log(message)
@@ -127,55 +131,154 @@ class HarvesterClient:
 					mycount = 0
 					dbconn.commit()
 	
-	def grabIDs(self):
-		#TODO: automatically grab IDs given a particular location
-		#Right now only takes IDs from a file
-		#put IDs grabbed into self.IDqueue
-		#3 sample IDs:496655421, 14601890, 194357523
+	def parseStatus(self, status):
+		text = status[u'text'].encode('UTF-8')
+		UID = status[u'user'][u'id']
+		TweetID = status[u'id']
+		HashTags = status[u'entities'][u'hashtags']
+		Time = status[u'created_at']
 		
-		samples = [496655421, 14601890, 194357523]
-		time = datetime.datetime.now()
-		geo = "49.168236527256,-122.857360839844,50km"
-		for ID in samples:
-			self.IDqueue.put((ID, time, geo))
+		if isinstance(Time, datetime.datetime):
+			myTime = Time	
+		else:
+			myTime = datetime.datetime.strptime(Time, '%a %b %d %H:%M:%S +0000 %Y')
+		
+		return UID, TweetID, text, HashTags, str(myTime)
 	
-	def putIDs(self):
-		#TODO: take ID from self.IDqueueu
-		#GeoCode: 49.168236527256,-122.857360839844,50km
-		while True:
-			ID, time, geo =  self.IDqueue.get(True)
-			dbcursor = self.dbConn.cursor()
-			try:
-				dbcursor.execute("INSERT INTO userIDs(UserID, DateAdded, Location) VALUES(%s, %s, %s)", (str(ID), time, geo))
-			except MySQLdb.IntegrityError:
-				#If the ID is duplicate, ignore it. 
-				pass
-			self.dbConn.commit()
-			
-	def GrabIDFromDatabase(self, GrabberID):
-		dbconn = self.connectToDB()
-		cursor = dbconn.cursor()
-		msg = "[DB ID Grabber " + str(GrabberID) + "] Spawned an ID Grabber to get from database"
+	def resetgrabIDSpawnerMaxTweetID(self, myGrabber):
+		myGrabber.resetMaxTweetID()
+		
+		msg = "HarvesterID Grabber is restarting to gather IDs beginning from tweetID: " + str(myGrabber.lastID)
 		self.log(msg)
-		cursor.execute("SELECT * FROM userIDs WHERE NotScanned=0 LIMIT 1")
-		self.log2("[DB ID Grabber] Selected 1 rows from the Twitter Users database")
-		row = cursor.fetchone()
-		if row is None:
-			print colored("Didn't get an ID from the database, database probably empty", "red")
-			gevent.sleep(600)
-			return 
-		ID = row[0]		
+		print colored(msg, "yellow")
+	
+	def listCurrentTweetNumber(self, myGrabber):
+		#GEt the current Max Tweet Number
+		curID = myGrabber.lastID
+		msg = "Current HarvesterIDGrabber Max Tweet ID is: " + str(curID)
+		self.log(msg)
+		if curID > myGrabber.maxID:
+			msg = "Current HarvesterIDGrabber Max Tweet ID is past the max ID of " + str(myGrabber.maxID) + ", resetting it now"
+			self.log(msg)
+			print colored(msg, "yellow")
+			self.resetgrabIDSpawnerMaxTweetID(myGrabber)
+		else:
+			print colored(msg, "green")
+		#If the max tweet number is larger than a number, reset the Max Tweet Number, and say so
+	
+
+	def grabIDSpawners(self):
+		geo = "49.168236527256,-122.857360839844,50km"
+		sinceID = self.beginTweetID
+		myGrabber = HarvesterIDGrabber.HarvesterIDGrabber(geo, sinceID)
+		
+		msg = "HarvesterID Grabber is starting to gather IDs beginning from tweetID: " + str(myGrabber.lastID)
+		self.log(msg)
+		print colored(msg, "yellow")
+		
+		IDgrabbernum = 1
+		print colored("Spawning Tweet Grabbers based on location for ID harvesting")
+		while True:
+			self.grabIDs(IDgrabbernum, geo, myGrabber)
+			IDgrabbernum = IDgrabbernum + 1
+			if IDgrabbernum % 10 == 0:
+				self.listCurrentTweetNumber(myGrabber)
+		
+	
+	def grabIDs(self, grabIDnum, geo, myGrabber):
+		#Right now only takes IDs from a file
+		#Since ID: Starting with 253018723156381696, which is an ID in 2012-10-02
+		myname = "[Location-Based Tweet Grabber " + str(grabIDnum) + "] "
+		self.log(myname + "is spawned")
+		statuses = myGrabber.grabOneSet()
+		while len(statuses) < 1:
+			gevent.sleep(300)
+			statuses = myGrabber.grabOneSet()
+		msg = myname + "has grabbed One Set (200) Tweets, extracting UserID and tweets now"
+		self.log2(msg)
+		priority = 9999
+
+		for status in statuses:
+			try:
+				UID, tweetID, text, HashTags, Time = self.parseStatus(status)
+			except Exception as e:
+				self.caughtUnknownError(myname, e, str(status))
+			self.IDqueue.put((UID, tweetID, text, geo, HashTags, Time, priority))
+			self.TweetGrabbedQueue.put((text, UID, tweetID, HashTags, Time, priority))			
+		myGrabber.lastID = tweetID
+		self.lastIDGrabbed = tweetID
+			
+	def insertStatusIntoNewIDTable(self, status, cursor):
+		(UID, tweetID, text, geo, HashTags, Time, priority) = status
+		mymsg = "INSERT INTO UserID2(UserID, TweetDate, Location, Frequency) VALUES(%s, %s, %s, 1) ON DUPLICATE KEY UPDATE Frequency = Frequency + 1"
 		try:
-			self.TweetIDQueue.put(ID, True, 30)
+			cursor.execute(mymsg, (str(UID), str(Time), geo))
+		except Exception as e:
+			msg = "HarvestClient.insertStatusIntoNewIDTable errored with: " + str(e)
+			print colored(msg, "red")
+			self.log(msg) 
+		
+		
+	def IDPutter(self, PutterID):
+		#GeoCode: 49.168236527256,-122.857360839844,50km
+		myName = "[ID Putter " + str(PutterID) + "] "
+		msg = myName + "Has spawned"
+		print colored(msg, "green")
+		self.log(msg)
+		numPutted = 0
+		
+		dbconn = self.connectToDB()
+		dbcursor = dbconn.cursor()
+		while numPutted < 300:
+			status =  self.IDqueue.get(True)
+			self.insertStatusIntoNewIDTable(status, dbcursor)
+			numPutted += 1
+			if numPutted % 10 == 0:
+				dbconn.commit()				
+		dbconn.commit()
+			
+		msg = myName + "has made " +str(numPutted) + " insertions, shutting down now. "
+		self.log(msg)
+		print colored(msg, "green")
+		
+		dbconn.close()
+			
+	def spawnIDPutters(self):
+		PutterID = 1
+		while True:
+			self.IDputterPool.spawn(self.IDPutter, PutterID)
+			PutterID = PutterID + 1
+			gevent.sleep(1)			
+		
+			
+	def print_moduleCompleted(self, moduleName, extramessage=""):
+		msg = moduleName + "is successful" + extramessage
+		print colored(msg, "green")
+		self.log(msg)
+		
+	def GrabIDFromDatabase(self, GrabberID):        
+		myName = "[DB ID Grabber " + str(GrabberID) + "] "    
+		self.print_moduleIsSpawned(myName)
+
+		#TODO: Change module so that it doesn't rely on using the same table name
+		IDGrabber = HarvesterDatabaseIDGrabber.HarvesterDatabaseIDGrabber(self, myName)
+		
+		IDrow = IDGrabber.grabIDRow()
+		ID, frequency = IDGrabber.parseRow(IDrow)
+		try:
+			self.TweetIDQueue.put((ID, frequency), True, 30)
+			#FIXME Change the TweetIDQueue.get
 		except Queue.Full:
 			self.log("[DB ID Grabber " + str(GrabberID) + "] ID Queue is Full, waiting for 5 seconds")
-			dbconn.close()
+			IDGrabber.closeDBConnection()
 			gevent.sleep(5)
 			return
-		cursor.execute("Update userIDs SET NotScanned=1 Where UserID=%s ;", str(ID))
-		self.log2("[DB ID Grabber " + str(GrabberID) + "] ID grabber (GrabIDFromDatabase) got the userID: " + str(ID) + " Updated that into database now")
-		dbconn.commit()
-		dbconn.close()
+		
+		IDGrabber.updateRowIntoDatabase(ID)
+		IDGrabber.closeDBConnection()
+
+		msg = "and it got the ID: " + str(ID)
+		self.print_moduleCompleted(myName, msg)
 		#TODO: Set The scanned time to now. 
 	
 	def resetUserDatabase(self):
@@ -194,7 +297,7 @@ class HarvesterClient:
 				print ID
 			dbconn.commit()
 			
-	def TweetInserter(self, InserterID):
+	def TweetInserter(self, InserterID, InsertTable='newTweets'):
 		timeout = gevent.Timeout(800)
 		timeout.start()
 		try:
@@ -209,17 +312,19 @@ class HarvesterClient:
 			while insertions < 300:
 				try:
 					status = self.TweetGrabbedQueue.get(True, 10)
-					text, UID, TweetID, HashTags, Time = status
+					text, UID, TweetID, HashTags, Time, Priority = status
 					try:
-						cursor.execute("INSERT INTO testTweets(UserID, TweetID, Text, Time, HashTags) VALUES(%s, %s, %s, %s, %s)", (str(UID), str(TweetID), text, Time, str(HashTags)))
+						#print (InsertTable, str(UID), str(TweetID), text, str(Time), str(HashTags), str(Priority))
+						cursor.execute("INSERT INTO newTweets(UserID, TweetID, Text, Time, HashTags, Relevance) VALUES(%s, %s, %s, %s, %s, %s)", (str(UID), TweetID, text, str(Time), str(HashTags), Priority))
 					except MySQLdb.IntegrityError:
-						self.log2("[Tweet Inserter] Encountered MYSQL Integrity error, Tweet already in database, skipping for now")
+						msg = myName + "Encountered MYSQL Integrity error with status: " + str(status) + ", Tweet already in database, skipping for now"
+						self.log2(msg)
 				except Queue.Empty:
 					message = myName + "Queue empty timeout (probably due to deadlock), temporarily giving up control"
 					gevent.sleep()
 					self.log(message)			
 				
-					#If the ID is duplicate, ignore it. 
+					#If the ID is duplicate, ignore it. e
 				dbConnection.commit()
 				insertions = insertions + 1
 			finishMsg = "Tweet Inserter " + str(InserterID) + " has made " +str(insertions) + " insertions, shutting down now. "
@@ -237,97 +342,109 @@ class HarvesterClient:
 			timeout.cancel()
 			dbConnection.commit()
 			dbConnection.close()
-			msg = "[Tweet Inserter "+ str(InserterID) +"] There are " + str(self.TweetGrabbedQueue.qsize()) + " still left in the Tweet Grabbed Queue"
+			msg = "[Tweet Inserter "+ str(InserterID) +"] There are probably " + str(self.TweetGrabbedQueue.qsize()) + " tweets still left in the Tweet Grabbed Queue"
 			self.log(msg)
 		return 
 	
-	def GrabTweetsByID(self, UID, Grabbernum):
+	def print_moduleIsSpawned(self, moduleName):
+		msg = moduleName + "is spawned \t\t"
+		print colored(('\t' + msg), "white", "on_grey")
+		self.log(msg)
+
+	def getStauses(self, UID, lastTweetID, myName):
+		api = self.TwiApi
+		statuses = api.get_user_timeline(user_id=UID, count=200, max_id=lastTweetID)
+		
+		msg = myName + "Just got a stack of statuses of size: " + str(len(statuses))
+		self.log2(msg)
+		
+		if len(statuses) == 0:
+			stderrMessage = myName + "Empty status queue is returned by Twitter, Assuming there's no more status in the user's history"
+			self.log(stderrMessage)
+			raise EmptyStatusStack("Empty stack of statuses received. ")
+		
+		return statuses
+		
+	def QueueFullError(self, moduleName):
+		msg = moduleName + "just hit 10 second queue full timeout (probably due to deadlock), yielding cycles for now, for 5 seconds at least"
+		self.log2(msg)
+		gevent.sleep(5)
+		
+	def logTwythonRateLimitError(self, moduleName):
+		msg = moduleName + "Hitting the limit (Twython returned twitter error), this ID Grabber is gonna back off for 300 seconds\n"
+		self.log(msg)
+		sys.stderr.write(colored(msg, "blue"))
+		
+		
+	def handleGrabTweetTimeout(self, e, myName):
+		if gevent.Timeout in e:
+			msg = myName + "timed out after 1200 seconds. Cleaning up now. \n"
+			self.log(msg)
+			sys.stderr.write(colored(msg, "yellow"))
+		else:
+			msg = myName + "Errored with: " + str(e)
+			self.log(msg)
+			print colored(msg, "yellow")
+			
+	def caughtUnknownError(self, moduleName, e, additional=""):
+		msg = moduleName + "Errored with: " + str(e) + "\n"
+		sys.stderr.write(colored(msg, "red"))
+		if additional:
+			msg = "Additionally: " + additional
+			sys.stderr.write(colored(msg, "red"))
+		self.log(msg)
+	
+	def GrabTweetsByID(self, (UID, Frequency), Grabbernum):
 		timeout = gevent.Timeout(1200)
 		timeout.start()
 		try:
-			myName = "[Tweet Grabber " + str(Grabbernum) +  "] "
-			msg = myName + "is spawned \t\t"
-			print colored(('\t' + msg), "white", "on_grey")
-			self.log(msg)
-			api = self.TwiApi
-			cutoff = datetime.datetime(2012, 11, 01)
-			lastTweetID = 1401925121566576641
-			Time = time.strptime("11 Nov 13", "%d %b %y") ## This line works but makes no sense. I have no clue why it's working. 
+			myName = "[Tweet Grabber by UserID " + str(Grabbernum) +  "] "
+			self.print_moduleIsSpawned(myName)
+			min_cutoff = datetime.datetime(2012, 11, 01)
+			lastTweetID = 415486363714590720
 			realtime = datetime.datetime.now()
 			numTweets = 0
-			while (realtime > cutoff and numTweets < 3200):
+			while (realtime > min_cutoff and numTweets < 3200):
 				try:
-					statuses = api.get_user_timeline(user_id=UID, count=200, max_id=lastTweetID)
-					self.log2("[Tweet Grabber "+ str(Grabbernum) +"] Just got a stack of statuses of size: " + str(len(statuses)))
-					if len(statuses) is 0:
-						stderrMessage = "[Tweet Grabber "+ str(Grabbernum) +"] Empty status queue is returned by Twitter, Assuming there's no more status in the user's history"
-						self.log(stderrMessage)
-						break
+					statuses = self.getStauses(UID, lastTweetID, myName)
 					for status in statuses:
-						text = status[u'text'].encode('UTF-8')
-						TweetID = status[u'id']
-						HashTags = status[u'entities'][u'hashtags']
-						Time = time.strftime('%Y-%m-%d %H:%M:%S', time.strptime(status[u'created_at'],'%a %b %d %H:%M:%S +0000 %Y'))
+						UID, tweetID, text, HashTags, Time = self.parseStatus(status)						
 						try:
-							self.TweetGrabbedQueue.put((text, UID, TweetID, HashTags, Time), True, 10)
+							self.TweetGrabbedQueue.put((text, UID, tweetID, HashTags, Time, Frequency), True, 10)
 						except Queue.Full:
-							msg = "[Tweet Grabber "+ str(Grabbernum) +"] just hit 10 second queue full timeout (probably due to deadlock), yielding cycles for now"
-							self.log2(msg) 
-							gevent.sleep()
-				except (twython.TwythonRateLimitError, twython.TwythonError) as e:
-					#print colored(str(e), "yellow")
-					if twython.TwythonRateLimitError in e:
-						stderrMessage = "[Tweet Grabber "+ str(Grabbernum) +"] Hitting the limit (Twython returned twitter error), this ID Grabber is gonna back off for 300 seconds\n"
-						self.log(stderrMessage)
-						sys.stderr.write(colored(stderrMessage, "blue"))
+							self.QueueFullError(myName)
+				except (twython.TwythonRateLimitError, twython.TwythonError, EmptyStatusStack) as e:
+					if EmptyStatusStack in e:
+						break
+					elif twython.TwythonRateLimitError in e:
+						self.logTwythonRateLimitError(myName)
 						gevent.sleep(750)
 						continue
-					elif twython.TwythonError in e:
-						stderrMessage = myName + "just hit the SSL error. Backing off for 3 seconds to see if it comes back"
-						self.log(stderrMessage)
-						print colored(stderrMessage, "blue")
+					elif twython.TwythonError:
 						gevent.sleep(3)
 					else:
-						errMessage = myName +  str(e.__class__.__name__) + " : " + str(e)
-						self.log(errMessage)
-						print colored(errMessage, "yellow")
-				else:					
-					gevent.sleep()
-					try: 
-						realtime = datetime.datetime.strptime(Time, "%Y-%m-%d %H:%M:%S")
-					except UnboundLocalError as e:
-						self.log("Unobund local error from using realtime, even though it's defined at the top of the method")
-						print colored(str(e), "yellow")
-					lastTweetID = TweetID -1
+						self.caughtUnknownError(myName, e, str(status))
+				else:
+					lastTweetID = tweetID -1
 					numTweets = numTweets + len(statuses)
-					msg =  "[Tweet Grabber "+ str(Grabbernum) +"] "+ str(numTweets) + " numTweets so far, for USERID: " + str(UID)
-					self.log2(msg)			
-		except gevent.Timeout, t:
-			if t is not gevent.Timeout:
-				msg = myName + "Errored not with a timeout, this is the error message: " + str(t)
-				self.log(msg)
-			else:
-				msg = myName + "Module timed out after 1200 seconds. Cleaning up now. "
-				self.log(msg)
-				print colored(msg, "yellow")
-	
+		except (gevent.Timeout) as e:
+			sys.stderr.write(colored("GrabTweetsByID Timed out\n", "yellow"))
+			self.handleGrabTweetTimeout(e, myName)
+		
 		timeout.cancel()
-		msg = "[Tweet Grabber "+ str(Grabbernum) +"] Done grabbing tweets from this User: " + str(UID) + " and grabbed a total of: " + str(numTweets) + " Tweets."
+		msg = myName + "Done grabbing tweets User: " + str(UID) + " and grabbed a total of: " + str(numTweets) + " Tweets."
 		self.log(msg)
 		print colored(msg, "green")
-		msg = "[Tweet Grabber "+ str(Grabbernum) +"] There are " + str(self.TweetGrabbedQueue.qsize()) + " still left in the Tweet Grabbed Queue"
+		msg = myName + "There are " + str(self.TweetGrabbedQueue.qsize()) + " still left in the Tweet Grabbed Queue"
+		print colored(msg, "green")
 		self.log(msg)
 		return 
-	
-	#Block until there's an ID to process on TweetGrabQueue
-	def TweetGrabWorker(self, myNum):
-		ID = self.TweetIDQueue.get()
-		self.GrabTweetsByID(ID, myNum)
 			
 	def spawnTweetGrabbers(self):
 		Producer = 1
 		while True:
-			self.TweetGrabPool.spawn(self.TweetGrabWorker, Producer)
+			ID, frequency = self.TweetIDQueue.get()
+			self.TweetGrabPool.spawn(self.GrabTweetsByID, (ID, frequency), Producer)
 			Producer = Producer +1
 			gevent.sleep(1)
 			
@@ -388,10 +505,13 @@ class HarvesterClient:
 	def __init__(self, ip):
 		self.peerlist = []
 		self.logger = HarvesterLog.HarvesterLog("client")
-		self.logger2 = HarvesterLog.HarvesterLog("client_debug")
+		self.logger2 = HarvesterLog.HarvesterLog("clientDebug")
 		self.numAPICalls = 0
 		self.printCurrentTime()
 		
+		#Twitter Auth Stuff
+		self.TwiAuth = twiAuth.twiAuth()
+		self.TwiApi = self.TwiAuth.Api
 		'''
 		### Server module
 		print "In client mode, attempting to connect to ", ip
@@ -409,16 +529,21 @@ class HarvesterClient:
 		self.testDBConn(self.dbConn)
 		### // Database Module		
 		
-		'''
+		
 		### ID Grabbing Module 
-		print "Starting ID grabbing module"
-		self.IDqueue = Queue.Queue()
-		self.IDGrabber = Greenlet.spawn(self.grabIDs)
-		self.IDputter = Greenlet.spawn(self.putIDs)
+		print colored("Starting ID grabbing module", "green")
+		self.IDqueue = Queue.Queue(400)
+		self.beginTweetID = 253018723156381696
+		self.lastIDGrabbed = 253018723156381696
+		self.IDGrabber = Greenlet.spawn(self.grabIDSpawners)
+		
+		self.IDputterPool = gevent.pool.Pool(1)
+		Greenlet.spawn(self.spawnIDPutters)
 		### // ID grabbing module
-		'''
+		
 				
 		### Input ID from Folder Module
+		#FIXME: Put back the ID folder grabber module
 		#self.IDFolderGrabber = Greenlet.spawn(self.FolderGrabber)
 		### // Input ID Module
 		
@@ -430,20 +555,25 @@ class HarvesterClient:
 		'''
 		
 		### Tweet Grabber Module
-		self.TwiAuth = twiAuth.twiAuth()
-		self.TwiApi = self.TwiAuth.Api
-		self.TweetIDQueue = Queue.Queue(6)
-		self.IDGrabberPool = gevent.pool.Pool(3)
-		Greenlet.spawn(self.spawnIDDBGrabbers)	
+		self.TweetIDQueue = Queue.Queue(4)
+		self.IDGrabberPool = gevent.pool.Pool(1)
+		Greenlet.spawn(self.spawnIDDBGrabbers)
 		
-		self.TweetGrabbedQueue = Queue.Queue(600)
-		self.TweetInsertPool = gevent.pool.Pool(4)
-		self.TweetGrabPool = gevent.pool.Pool(3)
+		self.TweetGrabbedQueue = Queue.Queue(1000)
+		self.TweetInsertPool = gevent.pool.Pool(3)
 		Greenlet.spawn(self.spawnTweetInserters)
-		Greenlet.spawn(self.spawnTweetGrabbers)		
-		#self.resetUserDatabase()
 		
-		Greenlet.spawn(self.MonitorThread)
+		self.TweetGrabPool = gevent.pool.Pool(4)
+		Greenlet.spawn(self.spawnTweetGrabbers)
+		
+		#=======================================================================
+		# self.resetUserDatabase()		
+		#=======================================================================
+		
+		### Monitor Module
+		#FIXME: put back the monitor module
+		#------------------------------------ Greenlet.spawn(self.MonitorThread)
+		### //Monitor Module
 
 		while True:
 			gevent.sleep(10)
@@ -451,6 +581,9 @@ class HarvesterClient:
 		#TODO: Gracefully shutdown the program by shutdown
 		
 		### // Twwet Grabber Module
-		
-		
-		
+class EmptyStatusStack(Exception):
+		def __init__(self, value):
+			self.value = value
+		def __str__(self):
+			return repr(self.value)
+

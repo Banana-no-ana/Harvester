@@ -7,7 +7,7 @@ class HarvesterLog:
 		mytime = easytime.utcnow().convert('Canada/Pacific')
 		dateTime = str(mytime).split(".")[0]
 		date, Time = dateTime.split(" ")		
-		return date + " " + Time
+		return date + "." + Time
 		
 	def log(self, message):
 		self.open()
